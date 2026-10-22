@@ -1,0 +1,142 @@
+package com.example.gestion_movil.viewmodel
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.gestion_movil.model.UbicacionErrores
+import com.example.gestion_movil.model.UbicacionUiState
+import com.example.gestion_movil.data.repository.UbicacionRepository
+import com.example.gestion_movil.model.data.local.GestionDatabase
+import com.example.gestion_movil.model.data.local.UbicacionEntity
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+
+class UbicacionViewModel(app: Application) : AndroidViewModel(app) {
+
+    // El ViewModel trabaja con el repositorio, no con el DAO directamente
+    private val repository = UbicacionRepository(GestionDatabase.getDatabase(app).ubicacionDao())
+
+    // Ubicaciones guardadas en Room
+    val ubicaciones: Flow<List<UbicacionEntity>> = repository.ubicaciones
+
+    // Estado interno mutable
+    private val _estado = MutableStateFlow(UbicacionUiState())
+
+    // Estado expuesto para la UI
+    val estado: StateFlow<UbicacionUiState> = _estado
+
+    val estadosUbicacion = listOf("Disponible", "Ocupada", "En reorganización", "Fuera de uso")
+
+    fun nuevo() {
+        _estado.value = UbicacionUiState()
+    }
+
+    fun cargar(ubicacion: UbicacionEntity) {
+        _estado.value = UbicacionUiState(
+            id = ubicacion.id,
+            codigo = ubicacion.codigo,
+            zona = ubicacion.zona,
+            estante = ubicacion.estante,
+            repisa = ubicacion.repisa,
+            posicion = ubicacion.posicion,
+            descripcion = ubicacion.descripcion,
+            estado = ubicacion.estado
+        )
+    }
+
+    fun onCodigoChange(valor: String) {
+        _estado.update { it.copy(codigo = valor, errores = it.errores.copy(codigo = null)) }
+    }
+
+    fun onZonaChange(valor: String) {
+        _estado.update { it.copy(zona = valor, errores = it.errores.copy(zona = null)) }
+    }
+
+    fun onEstanteChange(valor: String) {
+        _estado.update { it.copy(estante = valor, errores = it.errores.copy(estante = null)) }
+    }
+
+    fun onRepisaChange(valor: String) {
+        _estado.update { it.copy(repisa = valor, errores = it.errores.copy(repisa = null)) }
+    }
+
+    fun onPosicionChange(valor: String) {
+        _estado.update { it.copy(posicion = valor) }
+    }
+
+    fun onDescripcionChange(valor: String) {
+        _estado.update { it.copy(descripcion = valor) }
+    }
+
+    fun onEstadoChange(valor: String) {
+        _estado.update { it.copy(estado = valor) }
+    }
+
+    // Validación global del formulario
+    fun validarFormulario(): Boolean {
+        val estadoActual = _estado.value
+
+        val errores = UbicacionErrores(
+            codigo = if (estadoActual.codigo.isBlank()) "Campo obligatorio" else null,
+            zona = if (estadoActual.zona.isBlank()) "Campo obligatorio" else null,
+            estante = if (estadoActual.estante.isBlank()) "Campo obligatorio" else null,
+            repisa = if (estadoActual.repisa.isBlank()) "Campo obligatorio" else null
+        )
+
+        val hayErrores = listOfNotNull(
+            errores.codigo,
+            errores.zona,
+            errores.estante,
+            errores.repisa
+        ).isNotEmpty()
+
+        _estado.update {
+            it.copy(errores = errores)
+        }
+
+        return !hayErrores
+    }
+
+    // Guarda en Room (inserta si es nueva, actualiza si ya existe)
+    fun guardar(onListo: () -> Unit) {
+        val a = _estado.value
+        viewModelScope.launch {
+            val ubicacion = UbicacionEntity(
+                id = a.id,
+                codigo = a.codigo.trim(),
+                zona = a.zona.trim(),
+                estante = a.estante.trim(),
+                repisa = a.repisa.trim(),
+                posicion = a.posicion.trim(),
+                descripcion = a.descripcion.trim(),
+                estado = a.estado,
+                fechaActualizacion = System.currentTimeMillis()   // Fecha de última actualización
+            )
+            if (a.id == 0L) repository.insertar(ubicacion) else repository.actualizar(ubicacion)
+            onListo()
+        }
+    }
+
+    fun eliminar(ubicacion: UbicacionEntity) {
+        viewModelScope.launch {
+            repository.eliminar(ubicacion)
+        }
+    }
+
+    // Texto de la ubicación, ej: "Bodega A, estante 2, repisa 3, posición izquierda"
+    fun texto(ubicacion: UbicacionEntity?): String {
+        if (ubicacion == null) return "Sin ubicación"
+        val posicion = if (ubicacion.posicion.isBlank()) "" else ", posición ${ubicacion.posicion}"
+        return "${ubicacion.zona}, estante ${ubicacion.estante}, repisa ${ubicacion.repisa}$posicion"
+    }
+
+    // Busca la ubicación de un producto dentro de la lista
+    fun buscar(lista: List<UbicacionEntity>, id: Long?): UbicacionEntity? {
+        return lista.find { it.id == id }
+    }
+
+}

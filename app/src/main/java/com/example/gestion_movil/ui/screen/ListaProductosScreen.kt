@@ -1,5 +1,7 @@
 package com.example.gestion_movil.ui.screen
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -147,9 +150,23 @@ fun ListaProductosScreen(
 
             // Lista con datos de Room
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(visibles) { producto ->
+                // key = id: así Compose sabe qué tarjeta es cuál y puede animarlas
+                items(visibles, key = { it.id }) { producto ->
+                    // Animación: la tarjeta cambia de color suavemente cuando la
+                    // existencia queda en el mínimo o bajo él (y vuelve al normal al reponer)
+                    val bajoMinimo = viewModel.estadoStock(producto) != "Disponible"
+                    val colorTarjeta by animateColorAsState(
+                        targetValue = if (bajoMinimo) MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                        animationSpec = tween(durationMillis = 600),
+                        label = "colorStock"
+                    )
                     Card(
+                        colors = CardDefaults.cardColors(containerColor = colorTarjeta),
                         modifier = Modifier
+                            // Animación: al buscar o filtrar, las tarjetas entran, salen
+                            // y se reordenan suavemente en vez de saltar
+                            .animateItem()
                             .fillMaxWidth()
                             .clickable {
                                 viewModel.seleccionar(producto.id)

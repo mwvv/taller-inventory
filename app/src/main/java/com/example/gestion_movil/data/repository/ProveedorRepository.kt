@@ -16,4 +16,6 @@ class ProveedorRepository(private val dao: ProveedorDao) {
     suspend fun eliminar(proveedor: ProveedorEntity) = dao.eliminar(proveedor)
 
     suspend fun obtenerPorId(id: Long): ProveedorEntity? = dao.obtenerPorId(id)
+
+    suspend fun contar(): Int = dao.contar()
 }

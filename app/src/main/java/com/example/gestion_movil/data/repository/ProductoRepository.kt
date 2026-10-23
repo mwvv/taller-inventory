@@ -26,4 +26,6 @@ class ProductoRepository(private val dao: ProductoDao) {
     // Productos activos bajo el mínimo de un proveedor (para el correo de reposición)
     suspend fun obtenerBajoMinimoPorProveedor(proveedorId: Long): List<ProductoEntity> =
         dao.obtenerBajoMinimoPorProveedor(proveedorId)
+
+    suspend fun contar(): Int = dao.contar()
 }

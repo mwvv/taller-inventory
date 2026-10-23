@@ -6,6 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.gestion_movil.model.ProductoErrores
 import com.example.gestion_movil.model.ProductoUiState
 import com.example.gestion_movil.data.repository.ProductoRepository
+import com.example.gestion_movil.data.repository.ProveedorRepository
+import com.example.gestion_movil.data.repository.UbicacionRepository
+import com.example.gestion_movil.model.data.local.DatosIniciales
 import com.example.gestion_movil.model.data.local.GestionDatabase
 import com.example.gestion_movil.model.data.local.ProductoEntity
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +22,8 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
 
     // El ViewModel trabaja con el repositorio, no con el DAO directamente
     private val repository = ProductoRepository(GestionDatabase.getDatabase(app).productoDao())
+    private val proveedorRepository = ProveedorRepository(GestionDatabase.getDatabase(app).proveedorDao())
+    private val ubicacionRepository = UbicacionRepository(GestionDatabase.getDatabase(app).ubicacionDao())
 
     // Lista de productos guardados en Room
     val productos: Flow<List<ProductoEntity>> = repository.productos
@@ -30,6 +35,25 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
     val estado: StateFlow<ProductoUiState> = _estado
 
     val estadosProducto = listOf("Activo", "Inactivo", "Descontinuado")
+
+    init {
+        viewModelScope.launch {
+            cargarDatosIniciales()
+        }
+    }
+
+    // Primera vez que se abre la app (base vacía): carga los datos de ejemplo
+    private suspend fun cargarDatosIniciales() {
+        val baseVacia = repository.contar() == 0 &&
+                proveedorRepository.contar() == 0 &&
+                ubicacionRepository.contar() == 0
+        if (!baseVacia) return
+
+        val ahora = System.currentTimeMillis()
+        proveedorRepository.insertar(DatosIniciales.proveedor())
+        ubicacionRepository.insertar(DatosIniciales.ubicacion(ahora))
+        DatosIniciales.productos(ahora).forEach { repository.insertar(it) }
+    }
 
     // ---------- Formulario ----------
 

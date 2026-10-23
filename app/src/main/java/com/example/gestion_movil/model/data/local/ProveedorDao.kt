@@ -27,4 +27,8 @@ interface ProveedorDao {
 
     @Query("SELECT * FROM proveedores WHERE id = :id")
     suspend fun obtenerPorId(id: Long): ProveedorEntity?
+
+    // Cantidad de registros (para saber si la base está vacía)
+    @Query("SELECT COUNT(*) FROM proveedores")
+    suspend fun contar(): Int
 }

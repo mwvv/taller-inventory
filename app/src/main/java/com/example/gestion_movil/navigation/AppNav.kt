@@ -1,5 +1,9 @@
 package com.example.gestion_movil.navigation
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -74,7 +78,16 @@ fun AppNav(
         }
     }
 
-    NavHost(navController = navController, startDestination = "login") {
+    // Animación al cambiar de pantalla: la nueva entra deslizándose desde la derecha
+    // y al volver atrás la pantalla actual sale hacia la derecha
+    NavHost(
+        navController = navController,
+        startDestination = "login",
+        enterTransition = { slideInHorizontally { it } + fadeIn() },
+        exitTransition = { slideOutHorizontally { -it / 3 } + fadeOut() },
+        popEnterTransition = { slideInHorizontally { -it / 3 } + fadeIn() },
+        popExitTransition = { slideOutHorizontally { it } + fadeOut() }
+    ) {
 
         composable("login") {
             LoginScreen(navController = navController, sesionViewModel = sesionViewModel)

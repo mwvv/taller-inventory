@@ -14,4 +14,6 @@ class UbicacionRepository(private val dao: UbicacionDao) {
     suspend fun actualizar(ubicacion: UbicacionEntity) = dao.actualizar(ubicacion)
 
     suspend fun eliminar(ubicacion: UbicacionEntity) = dao.eliminar(ubicacion)
+
+    suspend fun contar(): Int = dao.contar()
 }

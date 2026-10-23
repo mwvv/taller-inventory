@@ -1,5 +1,10 @@
 package com.example.gestion_movil.view
 
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +32,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -67,7 +73,19 @@ fun DrawerMenu(
         }
 
         if (bajoMinimo > 0) {
+            // Animación: el aviso "late" suavemente (crece y vuelve) para llamar la atención
+            val latido = rememberInfiniteTransition(label = "latidoAviso")
+            val escala by latido.animateFloat(
+                initialValue = 1f,
+                targetValue = 1.05f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 800),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "escalaAviso"
+            )
             NavigationDrawerItem(
+                modifier = Modifier.scale(escala),
                 label = { Text("Aviso: $bajoMinimo producto(s) agotados o bajo el mínimo", fontWeight = FontWeight.Bold) },
                 selected = true,
                 // El propietario va a reposición; el operador solo puede ver los productos

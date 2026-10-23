@@ -35,4 +35,8 @@ interface ProductoDao {
     // Productos bajo el mínimo de un proveedor (para el correo)
     @Query("SELECT * FROM productos WHERE proveedorId = :proveedorId AND cantidad <= existenciaMinima AND estado = 'Activo' ORDER BY nombre")
     suspend fun obtenerBajoMinimoPorProveedor(proveedorId: Long): List<ProductoEntity>
+
+    // Cantidad de registros (para saber si la base está vacía)
+    @Query("SELECT COUNT(*) FROM productos")
+    suspend fun contar(): Int
 }

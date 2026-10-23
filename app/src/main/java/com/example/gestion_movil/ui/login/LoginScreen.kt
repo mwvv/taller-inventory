@@ -1,5 +1,10 @@
 package com.example.gestion_movil.ui.login
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -104,18 +109,27 @@ fun LoginScreen(
             )
 
             // Aviso cuando la sesión se cerró por inactividad
-            sesion.mensaje?.let {
+            // Animación: aparece y desaparece con fundido en vez de saltar
+            AnimatedVisibility(
+                visible = sesion.mensaje != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
                 Text(
-                    text = it,
+                    text = sesion.mensaje.orEmpty(),
                     color = MaterialTheme.colorScheme.secondary,
                     fontWeight = FontWeight.Bold
                 )
             }
 
-            // Mensaje de error que entrega el ViewModel
-            state.error?.let {
+            // Mensaje de error que entrega el ViewModel (con la misma animación)
+            AnimatedVisibility(
+                visible = state.error != null,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
                 Text(
-                    text = it,
+                    text = state.error.orEmpty(),
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.Bold
                 )

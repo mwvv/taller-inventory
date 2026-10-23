@@ -27,4 +27,8 @@ interface UbicacionDao {
 
     @Query("SELECT * FROM ubicaciones WHERE id = :id")
     suspend fun obtenerPorId(id: Long): UbicacionEntity?
+
+    // Cantidad de registros (para saber si la base está vacía)
+    @Query("SELECT COUNT(*) FROM ubicaciones")
+    suspend fun contar(): Int
 }

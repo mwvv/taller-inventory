@@ -3,6 +3,7 @@ package com.example.gestion_movil.data.repository
 import com.example.gestion_movil.data.remote.ProveedorApi
 import com.example.gestion_movil.data.remote.RetrofitClient
 import com.example.gestion_movil.data.remote.aEntidad
+import com.example.gestion_movil.data.remote.obtenerProveedores
 import com.example.gestion_movil.model.data.local.ProveedorDao
 import com.example.gestion_movil.model.data.local.ProveedorEntity
 import kotlinx.coroutines.flow.Flow

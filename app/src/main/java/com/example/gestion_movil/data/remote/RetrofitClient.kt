@@ -9,10 +9,11 @@ import java.util.concurrent.TimeUnit
 // Cliente Retrofit único para toda la app
 object RetrofitClient {
 
-    // API de prueba: My JSON Server publica el archivo db.json de la raíz del repositorio de GitHub.
-    // Formato: https://my-json-server.typicode.com/<usuario>/<repositorio>/
+    // API de prueba: se lee el archivo db.json de la raíz del repositorio directamente desde GitHub (raw).
+    // Formato: https://raw.githubusercontent.com/<usuario>/<repositorio>/<rama>/
     // Si se usa un fork u otro repositorio, cambiar solo esta URL (debe terminar en "/").
-    private const val BASE_URL = "https://my-json-server.typicode.com/mwvv/taller-inventory/"
+    // Ojo: GitHub cachea el archivo unos minutos; tras un push los cambios pueden tardar en verse.
+    private const val BASE_URL = "https://raw.githubusercontent.com/mwvv/taller-inventory/main/"
 
     // Muestra en Logcat las peticiones y respuestas (útil para la demo)
     private val logging = HttpLoggingInterceptor().apply {

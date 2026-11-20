@@ -1,16 +1,19 @@
 package com.example.gestion_movil.data.remote
 
 import retrofit2.http.GET
-import retrofit2.http.Path
+
+// Contenido completo de db.json: { "proveedores": [ ... ] }
+data class DbJsonDto(
+    val proveedores: List<ProveedorDto> = emptyList()
+)
 
 // Endpoints de la API REST de proveedores (integración de prueba, no productiva)
 interface ProveedorApi {
 
-    // Lista todos los proveedores
-    @GET("proveedores")
-    suspend fun obtenerProveedores(): List<ProveedorDto>
-
-    // Un proveedor por su id remoto
-    @GET("proveedores/{id}")
-    suspend fun obtenerProveedor(@Path("id") id: Int): ProveedorDto
+    // Descarga db.json desde GitHub (raw) y devuelve la lista de proveedores
+    @GET("db.json")
+    suspend fun obtenerDb(): DbJsonDto
 }
+
+// Atajo para obtener solo la lista de proveedores
+suspend fun ProveedorApi.obtenerProveedores(): List<ProveedorDto> = obtenerDb().proveedores

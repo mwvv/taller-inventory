@@ -50,9 +50,11 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
         if (!baseVacia) return
 
         val ahora = System.currentTimeMillis()
-        proveedorRepository.insertar(DatosIniciales.proveedor())
-        ubicacionRepository.insertar(DatosIniciales.ubicacion(ahora))
+        DatosIniciales.proveedores().forEach { proveedorRepository.insertar(it) }
+        DatosIniciales.ubicaciones(ahora).forEach { ubicacionRepository.insertar(it) }
         DatosIniciales.productos(ahora).forEach { repository.insertar(it) }
+        val movimientoDao = GestionDatabase.getDatabase(getApplication()).movimientoDao()
+        DatosIniciales.movimientos(ahora).forEach { movimientoDao.insertar(it) }
     }
 
     // ---------- Formulario ----------

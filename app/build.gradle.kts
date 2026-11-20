@@ -5,6 +5,11 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+// Room exporta el esquema de cada versión a app/schemas/ (sirve para validar migraciones)
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 android {
     namespace = "com.example.gestion_movil"
     compileSdk = 36

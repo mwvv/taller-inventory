@@ -1,0 +1,48 @@
+{
+  "proveedores": [
+    {
+      "id": 1,
+      "codigo": "P001",
+      "nombre": "Repuestos Andes",
+      "contacto": "Ana Ficticia",
+      "correo": "ventas@andes-ficticio.cl",
+      "telefono": "",
+      "categorias": "Filtros, Frenos, Eléctrico",
+      "activo": true,
+      "observaciones": ""
+    },
+    {
+      "id": 2,
+      "codigo": "P002",
+      "nombre": "Lubricantes del Sur",
+      "contacto": "Luis Ejemplo",
+      "correo": "pedidos@lubsur-ficticio.cl",
+      "telefono": "+56 9 1111 2222",
+      "categorias": "Lubricantes, Líquidos",
+      "activo": true,
+      "observaciones": "Entrega en 48 horas"
+    },
+    {
+      "id": 3,
+      "codigo": "P003",
+      "nombre": "AutoPartes Norte",
+      "contacto": "Marta Demo",
+      "correo": "contacto@norte-ficticio.cl",
+      "telefono": "",
+      "categorias": "Eléctrico",
+      "activo": false,
+      "observaciones": "Proveedor inactivo (para probar el filtro)"
+    },
+    {
+      "id": 4,
+      "codigo": "P004",
+      "nombre": "Neumáticos Centro",
+      "contacto": "Pedro Prueba",
+      "correo": "ventas@neucentro-ficticio.cl",
+      "telefono": "+56 9 3333 4444",
+      "categorias": "Neumáticos, Baterías",
+      "activo": true,
+      "observaciones": "Proveedor obtenido desde la API REST"
+    }
+  ]
+}

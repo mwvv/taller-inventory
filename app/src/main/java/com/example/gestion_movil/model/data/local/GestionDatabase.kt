@@ -19,7 +19,7 @@ import androidx.room.migration.Migration
         SolicitudEntity::class
     ],
     version = 1,
-    exportSchema = true
+    exportSchema = false
 )
 abstract class GestionDatabase : RoomDatabase() {
 

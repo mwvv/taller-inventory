@@ -66,7 +66,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
 // Dependencias Room
-    val roomVersion = "2.8.4"
+    val roomVersion = "2.7.2"
 
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")

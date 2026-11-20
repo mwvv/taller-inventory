@@ -17,16 +17,12 @@ import java.util.Calendar
 
 class IndicadoresViewModel(app: Application) : AndroidViewModel(app) {
 
-    // El ViewModel trabaja con el repositorio, no con el DAO directamente
     private val repository = MovimientoRepository(GestionDatabase.getDatabase(app).movimientoDao())
 
-    // Movimientos guardados en Room (base de los indicadores)
     val movimientos: Flow<List<MovimientoEntity>> = repository.movimientos
 
-    // Estado interno mutable
     private val _estado = MutableStateFlow(IndicadoresUiState())
 
-    // Estado expuesto para la UI
     val estado: StateFlow<IndicadoresUiState> = _estado
 
     val periodos = listOf("Hoy", "7 días", "30 días", "Todo")
@@ -35,7 +31,6 @@ class IndicadoresViewModel(app: Application) : AndroidViewModel(app) {
         _estado.update { it.copy(periodo = valor) }
     }
 
-    // Deja solo los movimientos del período elegido
     fun filtrarPorPeriodo(lista: List<MovimientoEntity>, periodo: String): List<MovimientoEntity> {
         val ahora = System.currentTimeMillis()
         val dia = 24 * 60 * 60 * 1000L
@@ -48,7 +43,6 @@ class IndicadoresViewModel(app: Application) : AndroidViewModel(app) {
         return lista.filter { it.fecha >= desde }
     }
 
-    // Totales de ventas, consumos e ingresos del período
     fun resumen(lista: List<MovimientoEntity>): ResumenPeriodo {
         return ResumenPeriodo(
             unidadesVendidas = lista.filter { it.tipo == "Venta" }.sumOf { it.cantidad },
@@ -58,7 +52,6 @@ class IndicadoresViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    // Productos con mayor movimiento: más unidades vendidas o consumidas en servicio
     fun productosConMasMovimiento(lista: List<MovimientoEntity>, cantidad: Int = 5): List<ProductoMovido> {
         return lista
             .filter { it.tipo == "Venta" || it.tipo == "Consumo en servicio" }
@@ -73,7 +66,6 @@ class IndicadoresViewModel(app: Application) : AndroidViewModel(app) {
             .take(cantidad)
     }
 
-    // Proporción para la barra del ranking (el primero es la barra completa)
     fun proporcion(unidades: Int, maximo: Int): Float {
         return if (maximo == 0) 0f else unidades.toFloat() / maximo
     }

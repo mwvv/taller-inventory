@@ -17,16 +17,12 @@ import kotlinx.coroutines.launch
 
 class UbicacionViewModel(app: Application) : AndroidViewModel(app) {
 
-    // El ViewModel trabaja con el repositorio, no con el DAO directamente
     private val repository = UbicacionRepository(GestionDatabase.getDatabase(app).ubicacionDao())
 
-    // Ubicaciones guardadas en Room
     val ubicaciones: Flow<List<UbicacionEntity>> = repository.ubicaciones
 
-    // Estado interno mutable
     private val _estado = MutableStateFlow(UbicacionUiState())
 
-    // Estado expuesto para la UI
     val estado: StateFlow<UbicacionUiState> = _estado
 
     val estadosUbicacion = listOf("Disponible", "Ocupada", "En reorganización", "Fuera de uso")
@@ -76,7 +72,6 @@ class UbicacionViewModel(app: Application) : AndroidViewModel(app) {
         _estado.update { it.copy(estado = valor) }
     }
 
-    // Validación global del formulario
     fun validarFormulario(): Boolean {
         val estadoActual = _estado.value
 
@@ -101,7 +96,6 @@ class UbicacionViewModel(app: Application) : AndroidViewModel(app) {
         return !hayErrores
     }
 
-    // Guarda en Room (inserta si es nueva, actualiza si ya existe)
     fun guardar(onListo: () -> Unit) {
         val a = _estado.value
         viewModelScope.launch {
@@ -114,7 +108,7 @@ class UbicacionViewModel(app: Application) : AndroidViewModel(app) {
                 posicion = a.posicion.trim(),
                 descripcion = a.descripcion.trim(),
                 estado = a.estado,
-                fechaActualizacion = System.currentTimeMillis()   // Fecha de última actualización
+                fechaActualizacion = System.currentTimeMillis()
             )
             if (a.id == 0L) repository.insertar(ubicacion) else repository.actualizar(ubicacion)
             onListo()
@@ -127,14 +121,12 @@ class UbicacionViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // Texto de la ubicación, ej: "Bodega A, estante 2, repisa 3, posición izquierda"
     fun texto(ubicacion: UbicacionEntity?): String {
         if (ubicacion == null) return "Sin ubicación"
         val posicion = if (ubicacion.posicion.isBlank()) "" else ", posición ${ubicacion.posicion}"
         return "${ubicacion.zona}, estante ${ubicacion.estante}, repisa ${ubicacion.repisa}$posicion"
     }
 
-    // Busca la ubicación de un producto dentro de la lista
     fun buscar(lista: List<UbicacionEntity>, id: Long?): UbicacionEntity? {
         return lista.find { it.id == id }
     }

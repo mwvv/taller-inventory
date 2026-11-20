@@ -35,27 +35,68 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.ProductoViewModel
 
-// Menú principal de la app con los módulos del caso
 @Composable
 fun DrawerMenu(
     username: String,
     navController: NavController,
     productoViewModel: ProductoViewModel,
-    rolTexto: String,                       // "Propietario" u "Operador"
-    puedeAdministrarCompras: Boolean,       // Proveedores, reposición e indicadores (solo propietario)
+    rolTexto: String,
+    puedeAdministrarCompras: Boolean,
     onCerrarSesion: () -> Unit
 ) {
     val productos by productoViewModel.productos.collectAsState(initial = emptyList())
-    // Aviso interno de existencias bajas
     val bajoMinimo = productoViewModel.contarBajoMinimo(productos)
 
+    DrawerMenuContent(
+        username = username,
+        rolTexto = rolTexto,
+        puedeAdministrarCompras = puedeAdministrarCompras,
+        bajoMinimo = bajoMinimo,
+        onProductos = { navController.navigate("productos/$username") },
+        onHistorial = { navController.navigate("historial") },
+        onUbicaciones = { navController.navigate("ubicaciones") },
+        onProveedores = { navController.navigate("proveedores") },
+        onReposicion = { navController.navigate("reposicion") },
+        onIndicadores = { navController.navigate("indicadores") },
+        onEscanearQr = { navController.navigate("qr/$username") },
+        onAviso = {
+            if (puedeAdministrarCompras) navController.navigate("reposicion")
+            else navController.navigate("productos/$username")
+        },
+        onCerrarSesion = {
+            onCerrarSesion()
+            navController.navigate("login") {
+                popUpTo(navController.graph.id) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+    )
+}
+
+@Composable
+fun DrawerMenuContent(
+    username: String,
+    rolTexto: String,
+    puedeAdministrarCompras: Boolean,
+    bajoMinimo: Int,
+    onProductos: () -> Unit,
+    onHistorial: () -> Unit,
+    onUbicaciones: () -> Unit,
+    onProveedores: () -> Unit,
+    onReposicion: () -> Unit,
+    onIndicadores: () -> Unit,
+    onEscanearQr: () -> Unit,
+    onAviso: () -> Unit,
+    onCerrarSesion: () -> Unit
+) {
     Column(modifier = Modifier.fillMaxSize()) {
 
-        // Encabezado con el usuario que inició sesión
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -73,7 +114,6 @@ fun DrawerMenu(
         }
 
         if (bajoMinimo > 0) {
-            // Animación: el aviso "late" suavemente (crece y vuelve) para llamar la atención
             val latido = rememberInfiniteTransition(label = "latidoAviso")
             val escala by latido.animateFloat(
                 initialValue = 1f,
@@ -88,40 +128,26 @@ fun DrawerMenu(
                 modifier = Modifier.scale(escala),
                 label = { Text("Aviso: $bajoMinimo producto(s) agotados o bajo el mínimo", fontWeight = FontWeight.Bold) },
                 selected = true,
-                // El propietario va a reposición; el operador solo puede ver los productos
-                onClick = {
-                    if (puedeAdministrarCompras) navController.navigate("reposicion")
-                    else navController.navigate("productos/$username")
-                },
+                onClick = onAviso,
                 icon = { Icon(Icons.Default.Warning, contentDescription = "Aviso de existencias bajas") }
             )
         }
 
         LazyColumn(modifier = Modifier.weight(1f)) {
-            item { OpcionMenu("Productos", Icons.Default.Inventory) { navController.navigate("productos/$username") } }
-            item { OpcionMenu("Historial de movimientos", Icons.Default.History) { navController.navigate("historial") } }
-            item { OpcionMenu("Ubicaciones", Icons.Default.Place) { navController.navigate("ubicaciones") } }
-            // Opciones solo para el propietario
+            item { OpcionMenu("Productos", Icons.Default.Inventory, onProductos) }
+            item { OpcionMenu("Historial de movimientos", Icons.Default.History, onHistorial) }
+            item { OpcionMenu("Ubicaciones", Icons.Default.Place, onUbicaciones) }
             if (puedeAdministrarCompras) {
-                item { OpcionMenu("Proveedores", Icons.Default.LocalShipping) { navController.navigate("proveedores") } }
-                item { OpcionMenu("Reposición", Icons.Default.ShoppingCart) { navController.navigate("reposicion") } }
-                item { OpcionMenu("Indicadores", Icons.Default.BarChart) { navController.navigate("indicadores") } }
+                item { OpcionMenu("Proveedores", Icons.Default.LocalShipping, onProveedores) }
+                item { OpcionMenu("Reposición", Icons.Default.ShoppingCart, onReposicion) }
+                item { OpcionMenu("Indicadores", Icons.Default.BarChart, onIndicadores) }
             }
-            item { OpcionMenu("Escanear QR", Icons.Default.QrCodeScanner) { navController.navigate("qr/$username") } }
-            item {
-                OpcionMenu("Cerrar sesión", Icons.Default.Lock) {
-                    onCerrarSesion()
-                    navController.navigate("login") {
-                        popUpTo(navController.graph.id) { inclusive = true } // no volver al menú con "atrás"
-                        launchSingleTop = true
-                    }
-                }
-            }
+            item { OpcionMenu("Escanear QR", Icons.Default.QrCodeScanner, onEscanearQr) }
+            item { OpcionMenu("Cerrar sesión", Icons.Default.Lock, onCerrarSesion) }
         }
     }
 }
 
-// Una opción del menú (texto + ícono)
 @Composable
 private fun OpcionMenu(texto: String, icono: ImageVector, onClick: () -> Unit) {
     NavigationDrawerItem(
@@ -130,4 +156,26 @@ private fun OpcionMenu(texto: String, icono: ImageVector, onClick: () -> Unit) {
         onClick = onClick,
         icon = { Icon(icono, contentDescription = texto) }
     )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DrawerMenuContentPreview() {
+    GestionMovilTheme {
+        DrawerMenuContent(
+            username = "admin",
+            rolTexto = "Propietario",
+            puedeAdministrarCompras = true,
+            bajoMinimo = 2,
+            onProductos = {},
+            onHistorial = {},
+            onUbicaciones = {},
+            onProveedores = {},
+            onReposicion = {},
+            onIndicadores = {},
+            onEscanearQr = {},
+            onAviso = {},
+            onCerrarSesion = {}
+        )
+    }
 }

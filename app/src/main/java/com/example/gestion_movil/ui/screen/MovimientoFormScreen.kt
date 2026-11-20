@@ -29,30 +29,67 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.gestion_movil.model.MovimientoUiState
+import com.example.gestion_movil.model.data.local.ProductoEntity
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.MovimientoViewModel
 import com.example.gestion_movil.viewmodel.ProductoViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovimientoFormScreen(
     navController: NavController,
     username: String,
     viewModel: MovimientoViewModel,
     productoViewModel: ProductoViewModel,
-    tiposPermitidos: List<String> = viewModel.tipos     // El operador no ve Ajuste ni Devolución
+    tiposPermitidos: List<String> = viewModel.tipos
 ) {
     val estado by viewModel.estado.collectAsState()
     val productos by productoViewModel.productos.collectAsState(initial = emptyList())
     val producto = productos.find { it.id == estado.productoId }
 
+    MovimientoFormContent(
+        estado = estado,
+        producto = producto,
+        tiposPermitidos = tiposPermitidos,
+        descripcionTipo = { tipo -> viewModel.descripcionTipo(tipo) },
+        calcularResultante = { tipo, actual, cantidad -> viewModel.calcularResultante(tipo, actual, cantidad) },
+        onTipoChange = viewModel::onTipoChange,
+        onCantidadChange = viewModel::onCantidadChange,
+        onMotivoChange = viewModel::onMotivoChange,
+        onObservacionChange = viewModel::onObservacionChange,
+        onRegistrar = {
+            if (producto != null && viewModel.validarFormulario(producto.cantidad)) {
+                viewModel.guardar(username) { navController.popBackStack() }
+            }
+        },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MovimientoFormContent(
+    estado: MovimientoUiState,
+    producto: ProductoEntity?,
+    tiposPermitidos: List<String>,
+    descripcionTipo: (String) -> String,
+    calcularResultante: (String, Int, Int) -> Int,
+    onTipoChange: (String) -> Unit,
+    onCantidadChange: (String) -> Unit,
+    onMotivoChange: (String) -> Unit,
+    onObservacionChange: (String) -> Unit,
+    onRegistrar: () -> Unit,
+    onBack: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Registrar movimiento") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancelar")
                     }
                 }
@@ -77,29 +114,26 @@ fun MovimientoFormScreen(
             Text(producto.nombre, style = MaterialTheme.typography.titleLarge)
             Text("Existencia actual: ${producto.cantidad} ${producto.unidadMedida}")
 
-            // Tipo de movimiento (cada uno con su explicación en texto)
             Text("Tipo de movimiento", style = MaterialTheme.typography.titleSmall)
             tiposPermitidos.forEach { tipo ->
                 Row(
-                    // Toda la fila se puede tocar, no solo el círculo
-                    modifier = Modifier.fillMaxWidth().clickable { viewModel.onTipoChange(tipo) },
+                    modifier = Modifier.fillMaxWidth().clickable { onTipoChange(tipo) },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
                         selected = estado.tipo == tipo,
-                        onClick = { viewModel.onTipoChange(tipo) }
+                        onClick = { onTipoChange(tipo) }
                     )
                     Column {
                         Text(tipo, fontWeight = FontWeight.Bold)
-                        Text(viewModel.descripcionTipo(tipo), style = MaterialTheme.typography.bodySmall)
+                        Text(descripcionTipo(tipo), style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
 
-            // Campo cantidad
             OutlinedTextField(
                 value = estado.cantidad,
-                onValueChange = viewModel::onCantidadChange,
+                onValueChange = onCantidadChange,
                 label = { Text(if (estado.tipo == "Ajuste") "Cantidad contada (nueva existencia)" else "Cantidad") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 isError = estado.errores.cantidad != null,
@@ -111,19 +145,17 @@ fun MovimientoFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Vista previa de la existencia resultante
             estado.cantidad.toIntOrNull()?.let { cantidad ->
-                val resultante = viewModel.calcularResultante(estado.tipo, producto.cantidad, cantidad)
+                val resultante = calcularResultante(estado.tipo, producto.cantidad, cantidad)
                 Text(
                     if (resultante < 0) "Existencia resultante: no alcanza el stock"
                     else "Existencia resultante: $resultante"
                 )
             }
 
-            // Campo motivo
             OutlinedTextField(
                 value = estado.motivo,
-                onValueChange = viewModel::onMotivoChange,
+                onValueChange = onMotivoChange,
                 label = { Text(if (estado.tipo == "Ajuste") "Motivo (obligatorio)" else "Motivo") },
                 isError = estado.errores.motivo != null,
                 supportingText = {
@@ -134,28 +166,52 @@ fun MovimientoFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo observación
             OutlinedTextField(
                 value = estado.observacion,
-                onValueChange = viewModel::onObservacionChange,
+                onValueChange = onObservacionChange,
                 label = { Text("Observación (opcional)") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Botón: registrar
             Button(
-                onClick = {
-                    if (viewModel.validarFormulario(producto.cantidad)) {
-                        viewModel.guardar(username) {
-                            navController.popBackStack()
-                        }
-                    }
-                },
+                onClick = onRegistrar,
                 enabled = !estado.isLoading,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (estado.isLoading) "Registrando" else "Registrar")
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun MovimientoFormContentPreview() {
+    val producto = ProductoEntity(
+        id = 1, codigo = "AC-001", nombre = "Aceite 5W-30",
+        descripcion = "Lubricante sintético", categoria = "Lubricantes", marca = "Genérico",
+        unidadMedida = "unidades", cantidad = 8, existenciaMinima = 5, existenciaObjetivo = 10,
+        precioCompra = 3500, precioVenta = 5990, estado = "Activo"
+    )
+    GestionMovilTheme {
+        MovimientoFormContent(
+            estado = MovimientoUiState(productoId = 1, tipo = "Venta", cantidad = "2", motivo = "Venta mostrador"),
+            producto = producto,
+            tiposPermitidos = listOf("Ingreso", "Venta", "Consumo en servicio", "Ajuste", "Devolución"),
+            descripcionTipo = { tipo ->
+                when (tipo) {
+                    "Ingreso" -> "Entrada por compra o recepción"
+                    "Venta" -> "Salida por venta al cliente"
+                    else -> "Movimiento de inventario"
+                }
+            },
+            calcularResultante = { _, actual, cantidad -> actual - cantidad },
+            onTipoChange = {},
+            onCantidadChange = {},
+            onMotivoChange = {},
+            onObservacionChange = {},
+            onRegistrar = {},
+            onBack = {}
+        )
     }
 }

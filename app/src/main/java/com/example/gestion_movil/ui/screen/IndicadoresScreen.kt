@@ -25,11 +25,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.gestion_movil.model.ProductoMovido
+import com.example.gestion_movil.model.ResumenPeriodo
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.IndicadoresViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IndicadoresScreen(
     navController: NavController,
@@ -38,18 +41,39 @@ fun IndicadoresScreen(
     val estado by viewModel.estado.collectAsState()
     val movimientos by viewModel.movimientos.collectAsState(initial = emptyList())
 
-    // Todos los cálculos los hace el ViewModel; la pantalla solo los muestra
     val delPeriodo = viewModel.filtrarPorPeriodo(movimientos, estado.periodo)
     val resumen = viewModel.resumen(delPeriodo)
     val ranking = viewModel.productosConMasMovimiento(delPeriodo)
     val maximo = ranking.firstOrNull()?.unidades ?: 0
 
+    IndicadoresContent(
+        periodos = viewModel.periodos,
+        periodoSeleccionado = estado.periodo,
+        resumen = resumen,
+        ranking = ranking,
+        proporcion = { unidades -> viewModel.proporcion(unidades, maximo) },
+        onPeriodoChange = viewModel::onPeriodoChange,
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun IndicadoresContent(
+    periodos: List<String>,
+    periodoSeleccionado: String,
+    resumen: ResumenPeriodo,
+    ranking: List<ProductoMovido>,
+    proporcion: (Int) -> Float,
+    onPeriodoChange: (String) -> Unit,
+    onBack: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Indicadores") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
@@ -65,25 +89,23 @@ fun IndicadoresScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 
-            // Filtro de período
             item {
                 Text("Período", style = MaterialTheme.typography.labelLarge)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    viewModel.periodos.forEach { periodo ->
+                    periodos.forEach { periodo ->
                         FilterChip(
-                            selected = estado.periodo == periodo,
-                            onClick = { viewModel.onPeriodoChange(periodo) },
+                            selected = periodoSeleccionado == periodo,
+                            onClick = { onPeriodoChange(periodo) },
                             label = { Text(periodo) }
                         )
                     }
                 }
             }
 
-            // Ventas y consumos del período
             item {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text("Ventas y consumos (${estado.periodo})", style = MaterialTheme.typography.titleMedium)
+                        Text("Ventas y consumos ($periodoSeleccionado)", style = MaterialTheme.typography.titleMedium)
                         Text("Unidades vendidas: ${resumen.unidadesVendidas}")
                         Text("Unidades usadas en servicios: ${resumen.unidadesConsumidas}")
                         Text("Unidades ingresadas: ${resumen.unidadesIngresadas}")
@@ -106,7 +128,6 @@ fun IndicadoresScreen(
                 }
             }
 
-            // Ranking: número, nombre, unidades y una barra proporcional
             itemsIndexed(ranking) { posicion, producto ->
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
@@ -114,11 +135,38 @@ fun IndicadoresScreen(
                         fontWeight = if (posicion == 0) FontWeight.Bold else FontWeight.Normal
                     )
                     LinearProgressIndicator(
-                        progress = { viewModel.proporcion(producto.unidades, maximo) },
+                        progress = { proporcion(producto.unidades) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun IndicadoresContentPreview() {
+    val ranking = listOf(
+        ProductoMovido(nombre = "Aceite 5W-30", unidades = 24),
+        ProductoMovido(nombre = "Filtro de aire", unidades = 15),
+        ProductoMovido(nombre = "Pastillas de freno", unidades = 9)
+    )
+    val maximo = ranking.first().unidades
+    GestionMovilTheme {
+        IndicadoresContent(
+            periodos = listOf("Hoy", "7 días", "30 días", "Todo"),
+            periodoSeleccionado = "30 días",
+            resumen = ResumenPeriodo(
+                unidadesVendidas = 39,
+                unidadesConsumidas = 9,
+                unidadesIngresadas = 60,
+                cantidadMovimientos = 18
+            ),
+            ranking = ranking,
+            proporcion = { unidades -> if (maximo == 0) 0f else unidades.toFloat() / maximo },
+            onPeriodoChange = {},
+            onBack = {}
+        )
     }
 }

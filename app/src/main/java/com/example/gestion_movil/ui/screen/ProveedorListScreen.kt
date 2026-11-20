@@ -38,13 +38,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.gestion_movil.model.data.local.ProveedorEntity
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.ProductoViewModel
 import com.example.gestion_movil.viewmodel.ProveedorViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProveedorListScreen(
     navController: NavController,
@@ -53,20 +54,52 @@ fun ProveedorListScreen(
 ) {
     val proveedores by viewModel.proveedores.collectAsState(initial = emptyList())
     val productos by productoViewModel.productos.collectAsState(initial = emptyList())
-
     val sincronizando by viewModel.sincronizando.collectAsState()
     val mensajeApi by viewModel.mensajeApi.collectAsState()
+
+    ProveedorListContent(
+        proveedores = proveedores,
+        contarAsociados = { proveedor -> productos.count { it.proveedorId == proveedor.id } },
+        sincronizando = sincronizando,
+        mensajeApi = mensajeApi,
+        onMensajeApiMostrado = viewModel::mensajeApiMostrado,
+        onSincronizar = viewModel::sincronizarDesdeApi,
+        onNuevo = {
+            viewModel.nuevo()
+            navController.navigate("proveedor_form")
+        },
+        onEditar = { proveedor ->
+            viewModel.cargar(proveedor)
+            navController.navigate("proveedor_form")
+        },
+        onEliminar = viewModel::eliminar,
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProveedorListContent(
+    proveedores: List<ProveedorEntity>,
+    contarAsociados: (ProveedorEntity) -> Int,
+    sincronizando: Boolean,
+    mensajeApi: String?,
+    onMensajeApiMostrado: () -> Unit,
+    onSincronizar: () -> Unit,
+    onNuevo: () -> Unit,
+    onEditar: (ProveedorEntity) -> Unit,
+    onEliminar: (ProveedorEntity) -> Unit,
+    onBack: () -> Unit
+) {
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Muestra el resultado de la API REST una sola vez
     LaunchedEffect(mensajeApi) {
         mensajeApi?.let {
             snackbarHostState.showSnackbar(it)
-            viewModel.mensajeApiMostrado()
+            onMensajeApiMostrado()
         }
     }
 
-    // Proveedor que se quiere eliminar (para la confirmación)
     var aEliminar by remember { mutableStateOf<ProveedorEntity?>(null) }
 
     Scaffold(
@@ -74,16 +107,15 @@ fun ProveedorListScreen(
             TopAppBar(
                 title = { Text("Proveedores") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 },
                 actions = {
-                    // Consulta la API REST de proveedores (Retrofit)
                     if (sincronizando) {
                         CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
                     } else {
-                        IconButton(onClick = { viewModel.sincronizarDesdeApi() }) {
+                        IconButton(onClick = onSincronizar) {
                             Icon(Icons.Default.CloudDownload, contentDescription = "Sincronizar con API REST")
                         }
                     }
@@ -92,10 +124,7 @@ fun ProveedorListScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                viewModel.nuevo()
-                navController.navigate("proveedor_form")
-            }) {
+            FloatingActionButton(onClick = onNuevo) {
                 Icon(Icons.Default.Add, contentDescription = "Registrar proveedor")
             }
         }
@@ -113,16 +142,12 @@ fun ProveedorListScreen(
             }
 
             items(proveedores) { proveedor ->
-                // Productos asociados a este proveedor
-                val asociados = productos.filter { it.proveedorId == proveedor.id }
+                val asociados = contarAsociados(proveedor)
 
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable {
-                            viewModel.cargar(proveedor)
-                            navController.navigate("proveedor_form")
-                        }
+                        .clickable { onEditar(proveedor) }
                 ) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -132,7 +157,7 @@ fun ProveedorListScreen(
                             if (proveedor.telefono.isNotBlank()) Text("Teléfono: ${proveedor.telefono}")
                             Text("Suministra: ${proveedor.categorias}")
                             Text("Estado: " + if (proveedor.activo) "Activo" else "Inactivo")
-                            Text("Productos asociados: ${asociados.size}")
+                            Text("Productos asociados: $asociados")
                         }
                         IconButton(onClick = { aEliminar = proveedor }) {
                             Icon(Icons.Default.Delete, contentDescription = "Eliminar proveedor")
@@ -142,7 +167,6 @@ fun ProveedorListScreen(
             }
         }
 
-        // Confirmación antes de eliminar
         aEliminar?.let { proveedor ->
             AlertDialog(
                 onDismissRequest = { aEliminar = null },
@@ -150,7 +174,7 @@ fun ProveedorListScreen(
                 text = { Text("¿Seguro que desea eliminar a ${proveedor.nombre}?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        viewModel.eliminar(proveedor)
+                        onEliminar(proveedor)
                         aEliminar = null
                     }) {
                         Text("Eliminar")
@@ -163,5 +187,37 @@ fun ProveedorListScreen(
                 }
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProveedorListContentPreview() {
+    GestionMovilTheme {
+        ProveedorListContent(
+            proveedores = listOf(
+                ProveedorEntity(
+                    id = 1, codigo = "PR-001", nombre = "Repuestos Andes",
+                    contacto = "Juan Pérez", correo = "ventas@andes-ficticio.cl",
+                    telefono = "+56 9 1234 5678", categorias = "Filtros, Frenos",
+                    activo = true, observaciones = ""
+                ),
+                ProveedorEntity(
+                    id = 2, codigo = "PR-002", nombre = "Lubricantes Sur",
+                    contacto = "María Soto", correo = "contacto@lubsur-ficticio.cl",
+                    telefono = "", categorias = "Lubricantes",
+                    activo = false, observaciones = ""
+                )
+            ),
+            contarAsociados = { 3 },
+            sincronizando = false,
+            mensajeApi = null,
+            onMensajeApiMostrado = {},
+            onSincronizar = {},
+            onNuevo = {},
+            onEditar = {},
+            onEliminar = {},
+            onBack = {}
+        )
     }
 }

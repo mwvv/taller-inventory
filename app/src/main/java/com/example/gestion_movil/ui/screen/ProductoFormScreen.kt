@@ -28,13 +28,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.gestion_movil.model.ProductoUiState
+import com.example.gestion_movil.model.data.local.ProveedorEntity
+import com.example.gestion_movil.model.data.local.UbicacionEntity
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.ProductoViewModel
 import com.example.gestion_movil.viewmodel.ProveedorViewModel
 import com.example.gestion_movil.viewmodel.UbicacionViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductoFormScreen(
     navController: NavController,
@@ -45,6 +49,61 @@ fun ProductoFormScreen(
     val estado by viewModel.estado.collectAsState()
     val proveedores by proveedorViewModel.proveedores.collectAsState(initial = emptyList())
     val ubicaciones by ubicacionViewModel.ubicaciones.collectAsState(initial = emptyList())
+
+    ProductoFormContent(
+        estado = estado,
+        proveedores = proveedores,
+        ubicaciones = ubicaciones,
+        estadosProducto = viewModel.estadosProducto,
+        textoUbicacion = { ubicacionViewModel.texto(it) },
+        onCodigoChange = viewModel::onCodigoChange,
+        onNombreChange = viewModel::onNombreChange,
+        onDescripcionChange = viewModel::onDescripcionChange,
+        onCategoriaChange = viewModel::onCategoriaChange,
+        onMarcaChange = viewModel::onMarcaChange,
+        onUnidadMedidaChange = viewModel::onUnidadMedidaChange,
+        onCantidadChange = viewModel::onCantidadChange,
+        onExistenciaMinimaChange = viewModel::onExistenciaMinimaChange,
+        onExistenciaObjetivoChange = viewModel::onExistenciaObjetivoChange,
+        onPrecioCompraChange = viewModel::onPrecioCompraChange,
+        onPrecioVentaChange = viewModel::onPrecioVentaChange,
+        onEstadoChange = viewModel::onEstadoChange,
+        onProveedorChange = viewModel::onProveedorChange,
+        onUbicacionChange = viewModel::onUbicacionChange,
+        onGuardar = {
+            if (viewModel.validarFormulario()) {
+                viewModel.guardar { navController.popBackStack() }
+            }
+        },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProductoFormContent(
+    estado: ProductoUiState,
+    proveedores: List<ProveedorEntity>,
+    ubicaciones: List<UbicacionEntity>,
+    estadosProducto: List<String>,
+    textoUbicacion: (UbicacionEntity) -> String,
+    onCodigoChange: (String) -> Unit,
+    onNombreChange: (String) -> Unit,
+    onDescripcionChange: (String) -> Unit,
+    onCategoriaChange: (String) -> Unit,
+    onMarcaChange: (String) -> Unit,
+    onUnidadMedidaChange: (String) -> Unit,
+    onCantidadChange: (String) -> Unit,
+    onExistenciaMinimaChange: (String) -> Unit,
+    onExistenciaObjetivoChange: (String) -> Unit,
+    onPrecioCompraChange: (String) -> Unit,
+    onPrecioVentaChange: (String) -> Unit,
+    onEstadoChange: (String) -> Unit,
+    onProveedorChange: (Long?) -> Unit,
+    onUbicacionChange: (Long?) -> Unit,
+    onGuardar: () -> Unit,
+    onBack: () -> Unit
+) {
     val esNuevo = estado.id == 0L
     val numeros = KeyboardOptions(keyboardType = KeyboardType.Number)
 
@@ -53,7 +112,7 @@ fun ProductoFormScreen(
             TopAppBar(
                 title = { Text(if (esNuevo) "Registrar producto" else "Modificar producto") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancelar")
                     }
                 }
@@ -70,10 +129,9 @@ fun ProductoFormScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-            // Campo código
             OutlinedTextField(
                 value = estado.codigo,
-                onValueChange = viewModel::onCodigoChange,
+                onValueChange = onCodigoChange,
                 label = { Text("Código interno") },
                 isError = estado.errores.codigo != null,
                 supportingText = {
@@ -84,10 +142,9 @@ fun ProductoFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo nombre
             OutlinedTextField(
                 value = estado.nombre,
-                onValueChange = viewModel::onNombreChange,
+                onValueChange = onNombreChange,
                 label = { Text("Nombre") },
                 isError = estado.errores.nombre != null,
                 supportingText = {
@@ -98,18 +155,16 @@ fun ProductoFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo descripción
             OutlinedTextField(
                 value = estado.descripcion,
-                onValueChange = viewModel::onDescripcionChange,
+                onValueChange = onDescripcionChange,
                 label = { Text("Descripción breve") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo categoría
             OutlinedTextField(
                 value = estado.categoria,
-                onValueChange = viewModel::onCategoriaChange,
+                onValueChange = onCategoriaChange,
                 label = { Text("Categoría (ej: Lubricantes, Filtros)") },
                 isError = estado.errores.categoria != null,
                 supportingText = {
@@ -120,26 +175,23 @@ fun ProductoFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo marca
             OutlinedTextField(
                 value = estado.marca,
-                onValueChange = viewModel::onMarcaChange,
+                onValueChange = onMarcaChange,
                 label = { Text("Marca") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo unidad de medida
             OutlinedTextField(
                 value = estado.unidadMedida,
-                onValueChange = viewModel::onUnidadMedidaChange,
+                onValueChange = onUnidadMedidaChange,
                 label = { Text("Unidad de medida (ej: Unidad, Litro)") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo cantidad: solo al crear, después cambia con movimientos
             OutlinedTextField(
                 value = estado.cantidad,
-                onValueChange = viewModel::onCantidadChange,
+                onValueChange = onCantidadChange,
                 label = { Text(if (esNuevo) "Cantidad inicial" else "Cantidad disponible (se cambia con movimientos)") },
                 enabled = esNuevo,
                 keyboardOptions = numeros,
@@ -152,10 +204,9 @@ fun ProductoFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo existencia mínima
             OutlinedTextField(
                 value = estado.existenciaMinima,
-                onValueChange = viewModel::onExistenciaMinimaChange,
+                onValueChange = onExistenciaMinimaChange,
                 label = { Text("Existencia mínima") },
                 keyboardOptions = numeros,
                 isError = estado.errores.existenciaMinima != null,
@@ -167,10 +218,9 @@ fun ProductoFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo existencia objetivo
             OutlinedTextField(
                 value = estado.existenciaObjetivo,
-                onValueChange = viewModel::onExistenciaObjetivoChange,
+                onValueChange = onExistenciaObjetivoChange,
                 label = { Text("Existencia objetivo (para reponer)") },
                 keyboardOptions = numeros,
                 isError = estado.errores.existenciaObjetivo != null,
@@ -182,10 +232,9 @@ fun ProductoFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo precio de compra
             OutlinedTextField(
                 value = estado.precioCompra,
-                onValueChange = viewModel::onPrecioCompraChange,
+                onValueChange = onPrecioCompraChange,
                 label = { Text("Precio de compra referencial") },
                 keyboardOptions = numeros,
                 isError = estado.errores.precioCompra != null,
@@ -197,10 +246,9 @@ fun ProductoFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo precio de venta
             OutlinedTextField(
                 value = estado.precioVenta,
-                onValueChange = viewModel::onPrecioVentaChange,
+                onValueChange = onPrecioVentaChange,
                 label = { Text("Precio de venta referencial") },
                 keyboardOptions = numeros,
                 isError = estado.errores.precioVenta != null,
@@ -212,90 +260,122 @@ fun ProductoFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Estado del producto
             Text("Estado", style = MaterialTheme.typography.titleSmall)
-            viewModel.estadosProducto.forEach { opcion ->
+            estadosProducto.forEach { opcion ->
                 Row(
-                    // Toda la fila se puede tocar, no solo el círculo
-                    modifier = Modifier.fillMaxWidth().clickable { viewModel.onEstadoChange(opcion) },
+                    modifier = Modifier.fillMaxWidth().clickable { onEstadoChange(opcion) },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
                         selected = estado.estado == opcion,
-                        onClick = { viewModel.onEstadoChange(opcion) }
+                        onClick = { onEstadoChange(opcion) }
                     )
                     Text(opcion)
                 }
             }
 
-            // Proveedor principal
             Text("Proveedor principal", style = MaterialTheme.typography.titleSmall)
             Row(
-                    // Toda la fila se puede tocar, no solo el círculo
-                    modifier = Modifier.fillMaxWidth().clickable { viewModel.onProveedorChange(null) },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                modifier = Modifier.fillMaxWidth().clickable { onProveedorChange(null) },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 RadioButton(
                     selected = estado.proveedorId == null,
-                    onClick = { viewModel.onProveedorChange(null) }
+                    onClick = { onProveedorChange(null) }
                 )
                 Text("Sin proveedor")
             }
             proveedores.forEach { proveedor ->
                 Row(
-                    // Toda la fila se puede tocar, no solo el círculo
-                    modifier = Modifier.fillMaxWidth().clickable { viewModel.onProveedorChange(proveedor.id) },
+                    modifier = Modifier.fillMaxWidth().clickable { onProveedorChange(proveedor.id) },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
                         selected = estado.proveedorId == proveedor.id,
-                        onClick = { viewModel.onProveedorChange(proveedor.id) }
+                        onClick = { onProveedorChange(proveedor.id) }
                     )
                     Text(proveedor.nombre)
                 }
             }
 
-            // Ubicación en la bodega
             Text("Ubicación en la bodega", style = MaterialTheme.typography.titleSmall)
             Row(
-                    // Toda la fila se puede tocar, no solo el círculo
-                    modifier = Modifier.fillMaxWidth().clickable { viewModel.onUbicacionChange(null) },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                modifier = Modifier.fillMaxWidth().clickable { onUbicacionChange(null) },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 RadioButton(
                     selected = estado.ubicacionId == null,
-                    onClick = { viewModel.onUbicacionChange(null) }
+                    onClick = { onUbicacionChange(null) }
                 )
                 Text("Sin ubicación")
             }
             ubicaciones.forEach { ubicacion ->
                 Row(
-                    // Toda la fila se puede tocar, no solo el círculo
-                    modifier = Modifier.fillMaxWidth().clickable { viewModel.onUbicacionChange(ubicacion.id) },
+                    modifier = Modifier.fillMaxWidth().clickable { onUbicacionChange(ubicacion.id) },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
                         selected = estado.ubicacionId == ubicacion.id,
-                        onClick = { viewModel.onUbicacionChange(ubicacion.id) }
+                        onClick = { onUbicacionChange(ubicacion.id) }
                     )
-                    Text("${ubicacion.codigo}: ${ubicacionViewModel.texto(ubicacion)}")
+                    Text("${ubicacion.codigo}: ${textoUbicacion(ubicacion)}")
                 }
             }
 
-            // Botón: guardar
             Button(
-                onClick = {
-                    if (viewModel.validarFormulario()) {
-                        viewModel.guardar {
-                            navController.popBackStack()
-                        }
-                    }
-                },
+                onClick = onGuardar,
                 enabled = !estado.isLoading,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (estado.isLoading) "Guardando" else "Guardar")
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProductoFormContentPreview() {
+    GestionMovilTheme {
+        ProductoFormContent(
+            estado = ProductoUiState(
+                codigo = "AC-001",
+                nombre = "Aceite 5W-30",
+                descripcion = "Lubricante sintético",
+                categoria = "Lubricantes",
+                marca = "Genérico",
+                unidadMedida = "Litro",
+                cantidad = "10",
+                existenciaMinima = "5",
+                existenciaObjetivo = "12",
+                precioCompra = "3500",
+                precioVenta = "5990",
+                estado = "Activo"
+            ),
+            proveedores = listOf(
+                ProveedorEntity(1, "PR-001", "Repuestos Andes", "Juan", "a@b.cl", "", "Filtros", true, "")
+            ),
+            ubicaciones = listOf(
+                UbicacionEntity(1, "A-2-3", "Bodega A", "2", "3", "Izq", "", "Disponible", 1_700_000_000_000)
+            ),
+            estadosProducto = listOf("Activo", "Inactivo", "Descontinuado"),
+            textoUbicacion = { "Bodega A · Estante 2 · Repisa 3" },
+            onCodigoChange = {},
+            onNombreChange = {},
+            onDescripcionChange = {},
+            onCategoriaChange = {},
+            onMarcaChange = {},
+            onUnidadMedidaChange = {},
+            onCantidadChange = {},
+            onExistenciaMinimaChange = {},
+            onExistenciaObjetivoChange = {},
+            onPrecioCompraChange = {},
+            onPrecioVentaChange = {},
+            onEstadoChange = {},
+            onProveedorChange = {},
+            onUbicacionChange = {},
+            onGuardar = {},
+            onBack = {}
+        )
     }
 }

@@ -35,13 +35,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.gestion_movil.model.ProductoUiState
+import com.example.gestion_movil.model.data.local.ProductoEntity
+import com.example.gestion_movil.model.data.local.ProveedorEntity
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.ProductoViewModel
 import com.example.gestion_movil.viewmodel.ProveedorViewModel
 import com.example.gestion_movil.viewmodel.UbicacionViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListaProductosScreen(
     navController: NavController,
@@ -49,40 +53,83 @@ fun ListaProductosScreen(
     viewModel: ProductoViewModel,
     proveedorViewModel: ProveedorViewModel,
     ubicacionViewModel: UbicacionViewModel,
-    puedeAdministrar: Boolean = true        // false = operador (solo consulta)
+    puedeAdministrar: Boolean = true
 ) {
     val estado by viewModel.estado.collectAsState()
     val productos by viewModel.productos.collectAsState(initial = emptyList())
     val proveedores by proveedorViewModel.proveedores.collectAsState(initial = emptyList())
     val ubicaciones by ubicacionViewModel.ubicaciones.collectAsState(initial = emptyList())
 
-    // La búsqueda y los filtros los resuelve el ViewModel
     val visibles = viewModel.filtrar(productos, estado)
 
+    ListaProductosContent(
+        estado = estado,
+        visibles = visibles,
+        categorias = viewModel.categorias(productos),
+        proveedores = proveedores,
+        puedeAdministrar = puedeAdministrar,
+        estadoStock = { producto -> viewModel.estadoStock(producto) },
+        textoUbicacion = { ubicacionId ->
+            ubicacionViewModel.texto(ubicacionViewModel.buscar(ubicaciones, ubicacionId))
+        },
+        onBusquedaChange = viewModel::onBusquedaChange,
+        onFiltroCategoria = viewModel::onFiltroCategoriaChange,
+        onFiltroProveedor = viewModel::onFiltroProveedorChange,
+        onEscanearQr = { navController.navigate("qr/$username") },
+        onNuevo = {
+            viewModel.nuevo()
+            navController.navigate("producto_form")
+        },
+        onSeleccionar = { producto ->
+            viewModel.seleccionar(producto.id)
+            navController.navigate("producto_detalle/$username")
+        },
+        onEditar = { producto ->
+            viewModel.cargar(producto)
+            navController.navigate("producto_form")
+        },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ListaProductosContent(
+    estado: ProductoUiState,
+    visibles: List<ProductoEntity>,
+    categorias: List<String>,
+    proveedores: List<ProveedorEntity>,
+    puedeAdministrar: Boolean,
+    estadoStock: (ProductoEntity) -> String,
+    textoUbicacion: (Long?) -> String,
+    onBusquedaChange: (String) -> Unit,
+    onFiltroCategoria: (String?) -> Unit,
+    onFiltroProveedor: (Long?) -> Unit,
+    onEscanearQr: () -> Unit,
+    onNuevo: () -> Unit,
+    onSeleccionar: (ProductoEntity) -> Unit,
+    onEditar: (ProductoEntity) -> Unit,
+    onBack: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Productos") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 },
                 actions = {
-                    // Leer el código QR de un producto con la cámara
-                    IconButton(onClick = { navController.navigate("qr/$username") }) {
+                    IconButton(onClick = onEscanearQr) {
                         Icon(Icons.Default.QrCodeScanner, contentDescription = "Escanear QR de producto")
                     }
                 }
             )
         },
         floatingActionButton = {
-            // Solo el propietario registra productos
             if (puedeAdministrar) {
-                FloatingActionButton(onClick = {
-                    viewModel.nuevo()
-                    navController.navigate("producto_form")
-                }) {
+                FloatingActionButton(onClick = onNuevo) {
                     Icon(Icons.Default.Add, contentDescription = "Registrar producto")
                 }
             }
@@ -97,48 +144,45 @@ fun ListaProductosScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-            // Búsqueda por nombre o código
             OutlinedTextField(
                 value = estado.busqueda,
-                onValueChange = viewModel::onBusquedaChange,
+                onValueChange = onBusquedaChange,
                 label = { Text("Buscar por nombre o código") },
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Filtro por categoría
             Text("Categoría", style = MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     FilterChip(
                         selected = estado.filtroCategoria == null,
-                        onClick = { viewModel.onFiltroCategoriaChange(null) },
+                        onClick = { onFiltroCategoria(null) },
                         label = { Text("Todas") }
                     )
                 }
-                items(viewModel.categorias(productos)) { categoria ->
+                items(categorias) { categoria ->
                     FilterChip(
                         selected = estado.filtroCategoria == categoria,
-                        onClick = { viewModel.onFiltroCategoriaChange(categoria) },
+                        onClick = { onFiltroCategoria(categoria) },
                         label = { Text(categoria) }
                     )
                 }
             }
 
-            // Filtro por proveedor
             Text("Proveedor", style = MaterialTheme.typography.labelLarge)
             LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 item {
                     FilterChip(
                         selected = estado.filtroProveedorId == null,
-                        onClick = { viewModel.onFiltroProveedorChange(null) },
+                        onClick = { onFiltroProveedor(null) },
                         label = { Text("Todos") }
                     )
                 }
                 items(proveedores) { proveedor ->
                     FilterChip(
                         selected = estado.filtroProveedorId == proveedor.id,
-                        onClick = { viewModel.onFiltroProveedorChange(proveedor.id) },
+                        onClick = { onFiltroProveedor(proveedor.id) },
                         label = { Text(proveedor.nombre) }
                     )
                 }
@@ -148,13 +192,9 @@ fun ListaProductosScreen(
                 Text(if (puedeAdministrar) "No hay productos para mostrar. Use + para registrar uno." else "No hay productos para mostrar.")
             }
 
-            // Lista con datos de Room
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                // key = id: así Compose sabe qué tarjeta es cuál y puede animarlas
                 items(visibles, key = { it.id }) { producto ->
-                    // Animación: la tarjeta cambia de color suavemente cuando la
-                    // existencia queda en el mínimo o bajo él (y vuelve al normal al reponer)
-                    val bajoMinimo = viewModel.estadoStock(producto) != "Disponible"
+                    val bajoMinimo = estadoStock(producto) != "Disponible"
                     val colorTarjeta by animateColorAsState(
                         targetValue = if (bajoMinimo) MaterialTheme.colorScheme.errorContainer
                         else MaterialTheme.colorScheme.surfaceVariant,
@@ -164,14 +204,9 @@ fun ListaProductosScreen(
                     Card(
                         colors = CardDefaults.cardColors(containerColor = colorTarjeta),
                         modifier = Modifier
-                            // Animación: al buscar o filtrar, las tarjetas entran, salen
-                            // y se reordenan suavemente en vez de saltar
                             .animateItem()
                             .fillMaxWidth()
-                            .clickable {
-                                viewModel.seleccionar(producto.id)
-                                navController.navigate("producto_detalle/$username")
-                            }
+                            .clickable { onSeleccionar(producto) }
                     ) {
                         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -179,16 +214,12 @@ fun ListaProductosScreen(
                                     text = "${producto.nombre} (${producto.codigo})",
                                     fontWeight = FontWeight.Bold
                                 )
-                                Text("Existencia: ${producto.cantidad} ${producto.unidadMedida} - ${viewModel.estadoStock(producto)}")
+                                Text("Existencia: ${producto.cantidad} ${producto.unidadMedida} - ${estadoStock(producto)}")
                                 Text("Categoría: ${producto.categoria}")
-                                Text("Ubicación: ${ubicacionViewModel.texto(ubicacionViewModel.buscar(ubicaciones, producto.ubicacionId))}")
+                                Text("Ubicación: ${textoUbicacion(producto.ubicacionId)}")
                             }
-                            // Editar el producto directamente desde la lista (solo propietario)
                             if (puedeAdministrar) {
-                                IconButton(onClick = {
-                                    viewModel.cargar(producto)
-                                    navController.navigate("producto_form")
-                                }) {
+                                IconButton(onClick = { onEditar(producto) }) {
                                     Icon(Icons.Default.Edit, contentDescription = "Modificar ${producto.nombre}")
                                 }
                             }
@@ -197,5 +228,45 @@ fun ListaProductosScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ListaProductosContentPreview() {
+    val productos = listOf(
+        ProductoEntity(
+            id = 1, codigo = "AC-001", nombre = "Aceite 5W-30",
+            descripcion = "", categoria = "Lubricantes", marca = "Genérico",
+            unidadMedida = "unidades", cantidad = 8, existenciaMinima = 5, existenciaObjetivo = 10,
+            precioCompra = 3500, precioVenta = 5990, estado = "Activo", ubicacionId = 1
+        ),
+        ProductoEntity(
+            id = 2, codigo = "FA-010", nombre = "Filtro de aire",
+            descripcion = "", categoria = "Filtros", marca = "Genérico",
+            unidadMedida = "unidades", cantidad = 2, existenciaMinima = 5, existenciaObjetivo = 12,
+            precioCompra = 2500, precioVenta = 4500, estado = "Activo", ubicacionId = 2
+        )
+    )
+    GestionMovilTheme {
+        ListaProductosContent(
+            estado = ProductoUiState(),
+            visibles = productos,
+            categorias = listOf("Lubricantes", "Filtros"),
+            proveedores = listOf(
+                ProveedorEntity(1, "PR-001", "Repuestos Andes", "Juan", "a@b.cl", "", "Filtros", true, "")
+            ),
+            puedeAdministrar = true,
+            estadoStock = { producto -> if (producto.cantidad <= producto.existenciaMinima) "Bajo el mínimo" else "Disponible" },
+            textoUbicacion = { if (it == 1L) "Bodega A · Estante 2" else "Bodega A · Estante 3" },
+            onBusquedaChange = {},
+            onFiltroCategoria = {},
+            onFiltroProveedor = {},
+            onEscanearQr = {},
+            onNuevo = {},
+            onSeleccionar = {},
+            onEditar = {},
+            onBack = {}
+        )
     }
 }

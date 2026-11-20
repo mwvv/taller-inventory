@@ -26,11 +26,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.gestion_movil.model.UbicacionUiState
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.UbicacionViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UbicacionFormScreen(
     navController: NavController,
@@ -38,12 +40,46 @@ fun UbicacionFormScreen(
 ) {
     val estado by viewModel.estado.collectAsState()
 
+    UbicacionFormContent(
+        estado = estado,
+        estadosUbicacion = viewModel.estadosUbicacion,
+        onCodigoChange = viewModel::onCodigoChange,
+        onZonaChange = viewModel::onZonaChange,
+        onEstanteChange = viewModel::onEstanteChange,
+        onRepisaChange = viewModel::onRepisaChange,
+        onPosicionChange = viewModel::onPosicionChange,
+        onDescripcionChange = viewModel::onDescripcionChange,
+        onEstadoChange = viewModel::onEstadoChange,
+        onGuardar = {
+            if (viewModel.validarFormulario()) {
+                viewModel.guardar { navController.popBackStack() }
+            }
+        },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UbicacionFormContent(
+    estado: UbicacionUiState,
+    estadosUbicacion: List<String>,
+    onCodigoChange: (String) -> Unit,
+    onZonaChange: (String) -> Unit,
+    onEstanteChange: (String) -> Unit,
+    onRepisaChange: (String) -> Unit,
+    onPosicionChange: (String) -> Unit,
+    onDescripcionChange: (String) -> Unit,
+    onEstadoChange: (String) -> Unit,
+    onGuardar: () -> Unit,
+    onBack: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (estado.id == 0L) "Registrar ubicación" else "Actualizar ubicación") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancelar")
                     }
                 }
@@ -60,10 +96,9 @@ fun UbicacionFormScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
-            // Campo código
             OutlinedTextField(
                 value = estado.codigo,
-                onValueChange = viewModel::onCodigoChange,
+                onValueChange = onCodigoChange,
                 label = { Text("Código (ej: A-2-3)") },
                 isError = estado.errores.codigo != null,
                 supportingText = {
@@ -74,10 +109,9 @@ fun UbicacionFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo zona
             OutlinedTextField(
                 value = estado.zona,
-                onValueChange = viewModel::onZonaChange,
+                onValueChange = onZonaChange,
                 label = { Text("Zona o sector (ej: Bodega A)") },
                 isError = estado.errores.zona != null,
                 supportingText = {
@@ -88,10 +122,9 @@ fun UbicacionFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo estante
             OutlinedTextField(
                 value = estado.estante,
-                onValueChange = viewModel::onEstanteChange,
+                onValueChange = onEstanteChange,
                 label = { Text("Estante") },
                 isError = estado.errores.estante != null,
                 supportingText = {
@@ -102,10 +135,9 @@ fun UbicacionFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo repisa
             OutlinedTextField(
                 value = estado.repisa,
-                onValueChange = viewModel::onRepisaChange,
+                onValueChange = onRepisaChange,
                 label = { Text("Repisa") },
                 isError = estado.errores.repisa != null,
                 supportingText = {
@@ -116,51 +148,68 @@ fun UbicacionFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo posición
             OutlinedTextField(
                 value = estado.posicion,
-                onValueChange = viewModel::onPosicionChange,
+                onValueChange = onPosicionChange,
                 label = { Text("Contenedor o posición (ej: izquierda)") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo descripción
             OutlinedTextField(
                 value = estado.descripcion,
-                onValueChange = viewModel::onDescripcionChange,
+                onValueChange = onDescripcionChange,
                 label = { Text("Descripción de referencia") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Estado de la ubicación
             Text("Estado", style = MaterialTheme.typography.titleSmall)
-            viewModel.estadosUbicacion.forEach { opcion ->
+            estadosUbicacion.forEach { opcion ->
                 Row(
-                    // Toda la fila se puede tocar, no solo el círculo
-                    modifier = Modifier.fillMaxWidth().clickable { viewModel.onEstadoChange(opcion) },
+                    modifier = Modifier.fillMaxWidth().clickable { onEstadoChange(opcion) },
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(
                         selected = estado.estado == opcion,
-                        onClick = { viewModel.onEstadoChange(opcion) }
+                        onClick = { onEstadoChange(opcion) }
                     )
                     Text(opcion)
                 }
             }
 
-            // Botón: guardar
             Button(
-                onClick = {
-                    if (viewModel.validarFormulario()) {
-                        viewModel.guardar {
-                            navController.popBackStack()
-                        }
-                    }
-                },
+                onClick = onGuardar,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Guardar")
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun UbicacionFormContentPreview() {
+    GestionMovilTheme {
+        UbicacionFormContent(
+            estado = UbicacionUiState(
+                codigo = "A-2-3",
+                zona = "Bodega A",
+                estante = "2",
+                repisa = "3",
+                posicion = "Izquierda",
+                descripcion = "Lubricantes y filtros",
+                estado = "Disponible"
+            ),
+            estadosUbicacion = listOf("Disponible", "Ocupada", "En reorganización", "Fuera de uso"),
+            onCodigoChange = {},
+            onZonaChange = {},
+            onEstanteChange = {},
+            onRepisaChange = {},
+            onPosicionChange = {},
+            onDescripcionChange = {},
+            onEstadoChange = {},
+            onGuardar = {},
+            onBack = {}
+        )
     }
 }

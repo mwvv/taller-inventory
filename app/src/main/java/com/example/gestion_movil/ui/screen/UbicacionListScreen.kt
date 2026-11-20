@@ -32,25 +32,57 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.example.gestion_movil.model.data.local.UbicacionEntity
 import com.example.gestion_movil.model.formatearFecha
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.ProductoViewModel
 import com.example.gestion_movil.viewmodel.UbicacionViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UbicacionListScreen(
     navController: NavController,
     viewModel: UbicacionViewModel,
     productoViewModel: ProductoViewModel,
-    puedeAdministrar: Boolean = true        // false = operador (solo consulta)
+    puedeAdministrar: Boolean = true
 ) {
     val ubicaciones by viewModel.ubicaciones.collectAsState(initial = emptyList())
     val productos by productoViewModel.productos.collectAsState(initial = emptyList())
 
-    // Ubicación que se quiere eliminar (para la confirmación)
+    UbicacionListContent(
+        ubicaciones = ubicaciones,
+        puedeAdministrar = puedeAdministrar,
+        textoUbicacion = { ubicacion -> viewModel.texto(ubicacion) },
+        productosEnUbicacion = { ubicacion ->
+            productos.filter { it.ubicacionId == ubicacion.id }.map { it.nombre }
+        },
+        onNuevo = {
+            viewModel.nuevo()
+            navController.navigate("ubicacion_form")
+        },
+        onEditar = { ubicacion ->
+            viewModel.cargar(ubicacion)
+            navController.navigate("ubicacion_form")
+        },
+        onEliminar = viewModel::eliminar,
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UbicacionListContent(
+    ubicaciones: List<UbicacionEntity>,
+    puedeAdministrar: Boolean,
+    textoUbicacion: (UbicacionEntity) -> String,
+    productosEnUbicacion: (UbicacionEntity) -> List<String>,
+    onNuevo: () -> Unit,
+    onEditar: (UbicacionEntity) -> Unit,
+    onEliminar: (UbicacionEntity) -> Unit,
+    onBack: () -> Unit
+) {
     var aEliminar by remember { mutableStateOf<UbicacionEntity?>(null) }
 
     Scaffold(
@@ -58,19 +90,15 @@ fun UbicacionListScreen(
             TopAppBar(
                 title = { Text("Ubicaciones") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
         },
         floatingActionButton = {
-            // Solo el propietario registra ubicaciones
             if (puedeAdministrar) {
-                FloatingActionButton(onClick = {
-                    viewModel.nuevo()
-                    navController.navigate("ubicacion_form")
-                }) {
+                FloatingActionButton(onClick = onNuevo) {
                     Icon(Icons.Default.Add, contentDescription = "Registrar ubicación")
                 }
             }
@@ -89,24 +117,20 @@ fun UbicacionListScreen(
             }
 
             items(ubicaciones) { ubicacion ->
-                // Productos guardados en esta ubicación
-                val enUbicacion = productos.filter { it.ubicacionId == ubicacion.id }
+                val enUbicacion = productosEnUbicacion(ubicacion)
 
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = puedeAdministrar) {
-                            viewModel.cargar(ubicacion)
-                            navController.navigate("ubicacion_form")
-                        }
+                        .clickable(enabled = puedeAdministrar) { onEditar(ubicacion) }
                 ) {
                     Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text(ubicacion.codigo, fontWeight = FontWeight.Bold)
-                            Text(viewModel.texto(ubicacion))
+                            Text(textoUbicacion(ubicacion))
                             Text("Estado: ${ubicacion.estado}")
                             Text("Actualizada: ${formatearFecha(ubicacion.fechaActualizacion)}")
-                            Text("Productos: " + if (enUbicacion.isEmpty()) "ninguno" else enUbicacion.joinToString { it.nombre })
+                            Text("Productos: " + if (enUbicacion.isEmpty()) "ninguno" else enUbicacion.joinToString())
                         }
                         if (puedeAdministrar) {
                             IconButton(onClick = { aEliminar = ubicacion }) {
@@ -118,7 +142,6 @@ fun UbicacionListScreen(
             }
         }
 
-        // Confirmación antes de eliminar
         aEliminar?.let { ubicacion ->
             AlertDialog(
                 onDismissRequest = { aEliminar = null },
@@ -126,7 +149,7 @@ fun UbicacionListScreen(
                 text = { Text("¿Seguro que desea eliminar la ubicación ${ubicacion.codigo}?") },
                 confirmButton = {
                     TextButton(onClick = {
-                        viewModel.eliminar(ubicacion)
+                        onEliminar(ubicacion)
                         aEliminar = null
                     }) {
                         Text("Eliminar")
@@ -139,5 +162,27 @@ fun UbicacionListScreen(
                 }
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun UbicacionListContentPreview() {
+    val ubicacion = UbicacionEntity(
+        id = 1, codigo = "A-2-3", zona = "Bodega A", estante = "2", repisa = "3",
+        posicion = "Izquierda", descripcion = "Lubricantes", estado = "Disponible",
+        fechaActualizacion = 1_700_000_000_000
+    )
+    GestionMovilTheme {
+        UbicacionListContent(
+            ubicaciones = listOf(ubicacion),
+            puedeAdministrar = true,
+            textoUbicacion = { "Bodega A · Estante 2 · Repisa 3" },
+            productosEnUbicacion = { listOf("Aceite 5W-30", "Filtro de aire") },
+            onNuevo = {},
+            onEditar = {},
+            onEliminar = {},
+            onBack = {}
+        )
     }
 }

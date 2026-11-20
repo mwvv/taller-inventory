@@ -31,15 +31,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.gestion_movil.model.data.local.MovimientoEntity
+import com.example.gestion_movil.model.data.local.ProductoEntity
 import com.example.gestion_movil.model.formatearFecha
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.MovimientoViewModel
 import com.example.gestion_movil.viewmodel.ProductoViewModel
 import com.example.gestion_movil.viewmodel.ProveedorViewModel
 import com.example.gestion_movil.viewmodel.UbicacionViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProductoDetalleScreen(
     navController: NavController,
@@ -48,8 +51,8 @@ fun ProductoDetalleScreen(
     movimientoViewModel: MovimientoViewModel,
     proveedorViewModel: ProveedorViewModel,
     ubicacionViewModel: UbicacionViewModel,
-    puedeAdministrar: Boolean = true,       // Modificar y eliminar (solo propietario)
-    puedeVerPrecios: Boolean = true         // Precios = información sensible (solo propietario)
+    puedeAdministrar: Boolean = true,
+    puedeVerPrecios: Boolean = true
 ) {
     val estado by viewModel.estado.collectAsState()
     val productos by viewModel.productos.collectAsState(initial = emptyList())
@@ -58,8 +61,57 @@ fun ProductoDetalleScreen(
     val ubicaciones by ubicacionViewModel.ubicaciones.collectAsState(initial = emptyList())
 
     val producto = productos.find { it.id == estado.seleccionadoId }
+    val historial = if (producto != null) {
+        movimientoViewModel.filtrarPorProducto(movimientos, producto.id)
+    } else {
+        emptyList()
+    }
 
-    // Confirmación antes de eliminar
+    ProductoDetalleContent(
+        producto = producto,
+        historial = historial,
+        puedeAdministrar = puedeAdministrar,
+        puedeVerPrecios = puedeVerPrecios,
+        estadoStock = { viewModel.estadoStock(it) },
+        nombreProveedor = { proveedorViewModel.nombre(proveedores, it) },
+        textoUbicacion = { ubicacionViewModel.texto(ubicacionViewModel.buscar(ubicaciones, it)) },
+        onRegistrarMovimiento = {
+            if (producto != null) {
+                movimientoViewModel.iniciar(producto.id)
+                navController.navigate("movimiento/$username")
+            }
+        },
+        onModificar = {
+            if (producto != null) {
+                viewModel.cargar(producto)
+                navController.navigate("producto_form")
+            }
+        },
+        onEliminar = {
+            if (producto != null) {
+                viewModel.eliminar(producto)
+                navController.popBackStack()
+            }
+        },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProductoDetalleContent(
+    producto: ProductoEntity?,
+    historial: List<MovimientoEntity>,
+    puedeAdministrar: Boolean,
+    puedeVerPrecios: Boolean,
+    estadoStock: (ProductoEntity) -> String,
+    nombreProveedor: (Long?) -> String,
+    textoUbicacion: (Long?) -> String,
+    onRegistrarMovimiento: () -> Unit,
+    onModificar: () -> Unit,
+    onEliminar: () -> Unit,
+    onBack: () -> Unit
+) {
     var mostrarDialogo by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -67,7 +119,7 @@ fun ProductoDetalleScreen(
             TopAppBar(
                 title = { Text("Detalle del producto") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
@@ -79,8 +131,6 @@ fun ProductoDetalleScreen(
             Text("Producto no encontrado", modifier = Modifier.padding(innerPadding).padding(16.dp))
             return@Scaffold
         }
-
-        val historial = movimientoViewModel.filtrarPorProducto(movimientos, producto.id)
 
         LazyColumn(
             modifier = Modifier
@@ -95,7 +145,7 @@ fun ProductoDetalleScreen(
                 Text("Descripción: ${producto.descripcion}")
                 Text("Categoría: ${producto.categoria}   Marca: ${producto.marca}")
                 Text(
-                    text = "Existencia: ${producto.cantidad} ${producto.unidadMedida} - ${viewModel.estadoStock(producto)}",
+                    text = "Existencia: ${producto.cantidad} ${producto.unidadMedida} - ${estadoStock(producto)}",
                     fontWeight = FontWeight.Bold
                 )
                 Text("Existencia mínima: ${producto.existenciaMinima}   Objetivo: ${producto.existenciaObjetivo}")
@@ -103,8 +153,8 @@ fun ProductoDetalleScreen(
                     Text("Precio compra: $${producto.precioCompra}   Precio venta: $${producto.precioVenta}")
                 }
                 Text("Estado: ${producto.estado}")
-                Text("Proveedor: ${proveedorViewModel.nombre(proveedores, producto.proveedorId)}")
-                Text("Ubicación: ${ubicacionViewModel.texto(ubicacionViewModel.buscar(ubicaciones, producto.ubicacionId))}")
+                Text("Proveedor: ${nombreProveedor(producto.proveedorId)}")
+                Text("Ubicación: ${textoUbicacion(producto.ubicacionId)}")
                 Text("Cambio de ubicación: ${formatearFecha(producto.fechaCambioUbicacion)}")
                 Text("Último ingreso: ${formatearFecha(producto.fechaUltimoIngreso)}")
                 Text("Última salida: ${formatearFecha(producto.fechaUltimaSalida)}")
@@ -112,23 +162,16 @@ fun ProductoDetalleScreen(
 
             item {
                 Button(
-                    onClick = {
-                        movimientoViewModel.iniciar(producto.id)
-                        navController.navigate("movimiento/$username")
-                    },
+                    onClick = onRegistrarMovimiento,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Registrar movimiento")
                 }
 
-                // Modificar y eliminar: solo el propietario
                 if (puedeAdministrar) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(
-                            onClick = {
-                                viewModel.cargar(producto)
-                                navController.navigate("producto_form")
-                            },
+                            onClick = onModificar,
                             modifier = Modifier.weight(1f)
                         ) {
                             Text("Modificar")
@@ -163,7 +206,6 @@ fun ProductoDetalleScreen(
             }
         }
 
-        // Confirmación antes de eliminar
         if (mostrarDialogo) {
             AlertDialog(
                 onDismissRequest = { mostrarDialogo = false },
@@ -172,8 +214,7 @@ fun ProductoDetalleScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         mostrarDialogo = false
-                        viewModel.eliminar(producto)
-                        navController.popBackStack()
+                        onEliminar()
                     }) {
                         Text("Eliminar")
                     }
@@ -185,5 +226,39 @@ fun ProductoDetalleScreen(
                 }
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProductoDetalleContentPreview() {
+    val producto = ProductoEntity(
+        id = 1, codigo = "AC-001", nombre = "Aceite 5W-30",
+        descripcion = "Lubricante sintético para motor", categoria = "Lubricantes", marca = "Genérico",
+        unidadMedida = "unidades", cantidad = 8, existenciaMinima = 5, existenciaObjetivo = 10,
+        precioCompra = 3500, precioVenta = 5990, estado = "Activo",
+        fechaUltimoIngreso = 1_700_000_000_000, proveedorId = 1, ubicacionId = 1
+    )
+    GestionMovilTheme {
+        ProductoDetalleContent(
+            producto = producto,
+            historial = listOf(
+                MovimientoEntity(
+                    id = 1, productoId = 1, productoNombre = "Aceite 5W-30",
+                    tipo = "Ingreso", cantidad = 10, fecha = 1_700_000_000_000,
+                    motivo = "Compra", observacion = "",
+                    existenciaAnterior = 0, existenciaResultante = 10, usuario = "admin"
+                )
+            ),
+            puedeAdministrar = true,
+            puedeVerPrecios = true,
+            estadoStock = { "Disponible" },
+            nombreProveedor = { "Repuestos Andes" },
+            textoUbicacion = { "Bodega A · Estante 2 · Repisa 3" },
+            onRegistrarMovimiento = {},
+            onModificar = {},
+            onEliminar = {},
+            onBack = {}
+        )
     }
 }

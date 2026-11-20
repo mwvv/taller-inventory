@@ -29,11 +29,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.gestion_movil.model.ProveedorUiState
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.ProveedorViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProveedorFormScreen(
     navController: NavController,
@@ -41,12 +43,46 @@ fun ProveedorFormScreen(
 ) {
     val estado by viewModel.estado.collectAsState()
 
+    ProveedorFormContent(
+        estado = estado,
+        onCodigoChange = viewModel::onCodigoChange,
+        onNombreChange = viewModel::onNombreChange,
+        onContactoChange = viewModel::onContactoChange,
+        onCorreoChange = viewModel::onCorreoChange,
+        onTelefonoChange = viewModel::onTelefonoChange,
+        onCategoriasChange = viewModel::onCategoriasChange,
+        onObservacionesChange = viewModel::onObservacionesChange,
+        onActivoChange = viewModel::onActivoChange,
+        onGuardar = {
+            if (viewModel.validarFormulario()) {
+                viewModel.guardar { navController.popBackStack() }
+            }
+        },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ProveedorFormContent(
+    estado: ProveedorUiState,
+    onCodigoChange: (String) -> Unit,
+    onNombreChange: (String) -> Unit,
+    onContactoChange: (String) -> Unit,
+    onCorreoChange: (String) -> Unit,
+    onTelefonoChange: (String) -> Unit,
+    onCategoriasChange: (String) -> Unit,
+    onObservacionesChange: (String) -> Unit,
+    onActivoChange: (Boolean) -> Unit,
+    onGuardar: () -> Unit,
+    onBack: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(if (estado.id == 0L) "Registrar proveedor" else "Modificar proveedor") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancelar")
                     }
                 }
@@ -65,10 +101,9 @@ fun ProveedorFormScreen(
 
             Text("Use solo datos ficticios", style = MaterialTheme.typography.bodySmall)
 
-            // Campo código
             OutlinedTextField(
                 value = estado.codigo,
-                onValueChange = viewModel::onCodigoChange,
+                onValueChange = onCodigoChange,
                 label = { Text("Código interno") },
                 isError = estado.errores.codigo != null,
                 supportingText = {
@@ -79,10 +114,9 @@ fun ProveedorFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo nombre
             OutlinedTextField(
                 value = estado.nombre,
-                onValueChange = viewModel::onNombreChange,
+                onValueChange = onNombreChange,
                 label = { Text("Nombre comercial") },
                 isError = estado.errores.nombre != null,
                 supportingText = {
@@ -93,18 +127,16 @@ fun ProveedorFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo contacto
             OutlinedTextField(
                 value = estado.contacto,
-                onValueChange = viewModel::onContactoChange,
+                onValueChange = onContactoChange,
                 label = { Text("Contacto") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo correo
             OutlinedTextField(
                 value = estado.correo,
-                onValueChange = viewModel::onCorreoChange,
+                onValueChange = onCorreoChange,
                 label = { Text("Correo electrónico") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 isError = estado.errores.correo != null,
@@ -116,36 +148,32 @@ fun ProveedorFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo teléfono
             OutlinedTextField(
                 value = estado.telefono,
-                onValueChange = viewModel::onTelefonoChange,
+                onValueChange = onTelefonoChange,
                 label = { Text("Teléfono (opcional)") },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo categorías
             OutlinedTextField(
                 value = estado.categorias,
-                onValueChange = viewModel::onCategoriasChange,
+                onValueChange = onCategoriasChange,
                 label = { Text("Productos o categorías que suministra") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo observaciones
             OutlinedTextField(
                 value = estado.observaciones,
-                onValueChange = viewModel::onObservacionesChange,
+                onValueChange = onObservacionesChange,
                 label = { Text("Observaciones / condiciones referenciales") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Checkbox: proveedor activo
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
                     checked = estado.activo,
-                    onCheckedChange = viewModel::onActivoChange
+                    onCheckedChange = onActivoChange
                 )
 
                 Spacer(Modifier.width(8.dp))
@@ -153,19 +181,41 @@ fun ProveedorFormScreen(
                 Text("Proveedor activo")
             }
 
-            // Botón: guardar
             Button(
-                onClick = {
-                    if (viewModel.validarFormulario()) {
-                        viewModel.guardar {
-                            navController.popBackStack()
-                        }
-                    }
-                },
+                onClick = onGuardar,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Guardar")
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProveedorFormContentPreview() {
+    GestionMovilTheme {
+        ProveedorFormContent(
+            estado = ProveedorUiState(
+                codigo = "PR-001",
+                nombre = "Repuestos Andes",
+                contacto = "Juan Pérez",
+                correo = "ventas@andes-ficticio.cl",
+                telefono = "+56 9 1234 5678",
+                categorias = "Filtros, Frenos, Eléctrico",
+                observaciones = "Entrega en 48 horas",
+                activo = true
+            ),
+            onCodigoChange = {},
+            onNombreChange = {},
+            onContactoChange = {},
+            onCorreoChange = {},
+            onTelefonoChange = {},
+            onCategoriasChange = {},
+            onObservacionesChange = {},
+            onActivoChange = {},
+            onGuardar = {},
+            onBack = {}
+        )
     }
 }

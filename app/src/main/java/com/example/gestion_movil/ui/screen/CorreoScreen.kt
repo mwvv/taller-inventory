@@ -30,11 +30,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.gestion_movil.model.CorreoUiState
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.ReposicionViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CorreoScreen(
     navController: NavController,
@@ -43,7 +45,35 @@ fun CorreoScreen(
     val correo by viewModel.correo.collectAsState()
     val context = LocalContext.current
 
-    // Confirmación antes de abrir el correo
+    CorreoContent(
+        correo = correo,
+        onDestinatarioChange = viewModel::onDestinatarioChange,
+        onAsuntoChange = viewModel::onAsuntoChange,
+        onCuerpoChange = viewModel::onCuerpoChange,
+        onValidar = { viewModel.validarCorreo() },
+        onConfirmarAbrir = {
+            try {
+                context.startActivity(viewModel.crearIntentCorreo())
+                viewModel.marcarPreparada()
+            } catch (e: ActivityNotFoundException) {
+                viewModel.onErrorCorreo("No hay una aplicación de correo instalada")
+            }
+        },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CorreoContent(
+    correo: CorreoUiState,
+    onDestinatarioChange: (String) -> Unit,
+    onAsuntoChange: (String) -> Unit,
+    onCuerpoChange: (String) -> Unit,
+    onValidar: () -> Boolean,
+    onConfirmarAbrir: () -> Unit,
+    onBack: () -> Unit
+) {
     var mostrarDialogo by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -51,7 +81,7 @@ fun CorreoScreen(
             TopAppBar(
                 title = { Text("Correo al proveedor") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Cancelar")
                     }
                 }
@@ -70,26 +100,23 @@ fun CorreoScreen(
 
             Text("Revise y modifique el borrador. La app NO envía el correo: solo lo abre en su aplicación de correo.")
 
-            // Campo destinatario
             OutlinedTextField(
                 value = correo.destinatario,
-                onValueChange = viewModel::onDestinatarioChange,
+                onValueChange = onDestinatarioChange,
                 label = { Text("Destinatario") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo asunto
             OutlinedTextField(
                 value = correo.asunto,
-                onValueChange = viewModel::onAsuntoChange,
+                onValueChange = onAsuntoChange,
                 label = { Text("Asunto") },
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo mensaje (productos y cantidades editables)
             OutlinedTextField(
                 value = correo.cuerpo,
-                onValueChange = viewModel::onCuerpoChange,
+                onValueChange = onCuerpoChange,
                 label = { Text("Mensaje") },
                 minLines = 10,
                 modifier = Modifier.fillMaxWidth()
@@ -99,10 +126,9 @@ fun CorreoScreen(
                 Text(text = it, color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
             }
 
-            // Botón: abrir correo
             Button(
                 onClick = {
-                    if (viewModel.validarCorreo()) {
+                    if (onValidar()) {
                         mostrarDialogo = true
                     }
                 },
@@ -112,7 +138,6 @@ fun CorreoScreen(
             }
         }
 
-        // Confirmación y apertura del correo
         if (mostrarDialogo) {
             AlertDialog(
                 onDismissRequest = { mostrarDialogo = false },
@@ -121,12 +146,7 @@ fun CorreoScreen(
                 confirmButton = {
                     TextButton(onClick = {
                         mostrarDialogo = false
-                        try {
-                            context.startActivity(viewModel.crearIntentCorreo())
-                            viewModel.marcarPreparada()
-                        } catch (e: ActivityNotFoundException) {
-                            viewModel.onErrorCorreo("No hay una aplicación de correo instalada")
-                        }
+                        onConfirmarAbrir()
                     }) {
                         Text("Abrir correo")
                     }
@@ -138,5 +158,27 @@ fun CorreoScreen(
                 }
             )
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun CorreoContentPreview() {
+    GestionMovilTheme {
+        CorreoContent(
+            correo = CorreoUiState(
+                proveedorId = 1,
+                destinatario = "ventas@andes-ficticio.cl",
+                asunto = "Solicitud de reposición",
+                cuerpo = "Estimados,\n\nSolicitamos cotización de los siguientes productos:\n- Aceite 5W-30 (código AC-001): 8 unidades\n- Filtro de aire (código FA-010): 5 unidades\n\nSaludos.",
+                error = null
+            ),
+            onDestinatarioChange = {},
+            onAsuntoChange = {},
+            onCuerpoChange = {},
+            onValidar = { true },
+            onConfirmarAbrir = {},
+            onBack = {}
+        )
     }
 }

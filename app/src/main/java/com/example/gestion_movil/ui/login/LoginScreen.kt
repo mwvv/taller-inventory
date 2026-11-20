@@ -49,7 +49,6 @@ fun LoginScreen(
 ) {
     val state = vm.uiState
     val sesion by sesionViewModel.estado.collectAsState()
-    // Mostrar u ocultar la contraseña (solo afecta la vista)
     var showPass by remember { mutableStateOf(false) }
 
     Scaffold { innerPadding ->
@@ -84,7 +83,6 @@ fun LoginScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Campo usuario
             OutlinedTextField(
                 value = state.username,
                 onValueChange = vm::onUsernameChange,
@@ -93,7 +91,6 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Campo contraseña
             OutlinedTextField(
                 value = state.password,
                 onValueChange = vm::onPasswordChange,
@@ -108,8 +105,6 @@ fun LoginScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Aviso cuando la sesión se cerró por inactividad
-            // Animación: aparece y desaparece con fundido en vez de saltar
             AnimatedVisibility(
                 visible = sesion.mensaje != null,
                 enter = fadeIn() + expandVertically(),
@@ -122,7 +117,6 @@ fun LoginScreen(
                 )
             }
 
-            // Mensaje de error que entrega el ViewModel (con la misma animación)
             AnimatedVisibility(
                 visible = state.error != null,
                 enter = fadeIn() + expandVertically(),
@@ -138,10 +132,9 @@ fun LoginScreen(
             Button(
                 onClick = {
                     vm.submit { cuenta ->
-                        // Se guarda quién entró y con qué perfil
                         sesionViewModel.iniciar(cuenta)
                         navController.navigate("DrawerMenu/${cuenta.username}") {
-                            popUpTo("login") { inclusive = true } // no volver al login con "atrás"
+                            popUpTo("login") { inclusive = true }
                             launchSingleTop = true
                         }
                     }

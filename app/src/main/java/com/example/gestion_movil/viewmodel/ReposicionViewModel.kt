@@ -22,47 +22,36 @@ import kotlinx.coroutines.launch
 class ReposicionViewModel(app: Application) : AndroidViewModel(app) {
 
     private val database = GestionDatabase.getDatabase(app)
-    // El ViewModel trabaja con el repositorio, no con el DAO directamente
     private val productoRepository = ProductoRepository(database.productoDao())
     private val proveedorRepository = ProveedorRepository(database.proveedorDao())
     private val solicitudRepository = SolicitudRepository(database.solicitudDao())
 
-    // Solicitudes de reposición guardadas en Room
     val solicitudes: Flow<List<SolicitudEntity>> = solicitudRepository.solicitudes
 
-    // Estado del borrador de correo
     private val _correo = MutableStateFlow(CorreoUiState())
     val correo: StateFlow<CorreoUiState> = _correo
 
-    // Estados de una solicitud, en orden
     private val estadosSolicitud = listOf("Pendiente", "Preparada", "Enviada", "Atendida")
 
-    // Nombre comercial ficticio del taller (va en la firma del correo)
     private val nombreTaller = "Taller Mecánico Puente Alto (ficticio)"
 
-    // ---------- Reposición ----------
 
-    // Productos activos agotados o bajo su existencia mínima
     fun bajoMinimo(lista: List<ProductoEntity>): List<ProductoEntity> {
         return lista.filter { it.estado == "Activo" && it.cantidad <= it.existenciaMinima }
     }
 
-    // Regla académica del caso: cantidad sugerida = existencia objetivo - cantidad disponible
     fun cantidadSugerida(producto: ProductoEntity): Int {
         return (producto.existenciaObjetivo - producto.cantidad).coerceAtLeast(0)
     }
 
-    // Agrupa las necesidades de compra por proveedor
     fun agruparPorProveedor(lista: List<ProductoEntity>): Map<Long?, List<ProductoEntity>> {
         return bajoMinimo(lista).groupBy { it.proveedorId }
     }
 
-    // Estado de la última solicitud del proveedor (si no hay, está Pendiente)
     fun estadoSolicitud(lista: List<SolicitudEntity>, proveedorId: Long): String {
         return lista.filter { it.proveedorId == proveedorId }.maxByOrNull { it.id }?.estado ?: "Pendiente"
     }
 
-    // Pasa la solicitud al siguiente estado: Pendiente -> Preparada -> Enviada -> Atendida -> Pendiente
     fun cambiarEstado(proveedorId: Long) {
         viewModelScope.launch {
             val ultima = solicitudRepository.obtenerUltima(proveedorId)
@@ -72,7 +61,6 @@ class ReposicionViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // Una solicitud Atendida ya terminó: el siguiente estado crea una solicitud nueva
     private suspend fun guardarEstado(ultima: SolicitudEntity?, proveedorId: Long, estado: String) {
         if (ultima == null || ultima.estado == "Atendida") {
             solicitudRepository.insertar(
@@ -88,9 +76,7 @@ class ReposicionViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- Correo tipo ----------
 
-    // Arma el borrador del correo para un proveedor
     fun prepararCorreo(proveedorId: Long) {
         viewModelScope.launch {
             val proveedor = proveedorRepository.obtenerPorId(proveedorId) ?: return@launch
@@ -127,7 +113,6 @@ class ReposicionViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // El propietario puede revisar y modificar todo antes de abrir el correo
     fun onDestinatarioChange(valor: String) {
         _correo.update { it.copy(destinatario = valor, error = null) }
     }
@@ -156,7 +141,6 @@ class ReposicionViewModel(app: Application) : AndroidViewModel(app) {
         _correo.update { it.copy(error = mensaje) }
     }
 
-    // Intent que abre la app de correo con el borrador. NO envía nada: el propietario decide.
     fun crearIntentCorreo(): Intent {
         val c = _correo.value
         val mailto = "mailto:" + Uri.encode(c.destinatario) +
@@ -169,7 +153,6 @@ class ReposicionViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // Al abrir el correo la solicitud queda Preparada (si estaba Pendiente)
     fun marcarPreparada() {
         val proveedorId = _correo.value.proveedorId
         viewModelScope.launch {

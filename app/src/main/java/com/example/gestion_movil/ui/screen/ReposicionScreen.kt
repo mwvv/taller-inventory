@@ -26,14 +26,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.gestion_movil.model.data.local.ProductoEntity
+import com.example.gestion_movil.model.data.local.ProveedorEntity
 import com.example.gestion_movil.model.formatearFecha
+import com.example.gestion_movil.ui.theme.GestionMovilTheme
 import com.example.gestion_movil.viewmodel.ProductoViewModel
 import com.example.gestion_movil.viewmodel.ProveedorViewModel
 import com.example.gestion_movil.viewmodel.ReposicionViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReposicionScreen(
     navController: NavController,
@@ -45,15 +48,41 @@ fun ReposicionScreen(
     val proveedores by proveedorViewModel.proveedores.collectAsState(initial = emptyList())
     val solicitudes by viewModel.solicitudes.collectAsState(initial = emptyList())
 
-    // Necesidades de compra agrupadas por proveedor (lo calcula el ViewModel)
     val grupos = viewModel.agruparPorProveedor(productos)
 
+    ReposicionContent(
+        grupos = grupos,
+        proveedores = proveedores,
+        estadoSolicitud = { proveedorId -> viewModel.estadoSolicitud(solicitudes, proveedorId) },
+        cantidadSugerida = { producto -> viewModel.cantidadSugerida(producto) },
+        estadoStock = { producto -> productoViewModel.estadoStock(producto) },
+        onCambiarEstado = { proveedorId -> viewModel.cambiarEstado(proveedorId) },
+        onPrepararCorreo = { proveedorId ->
+            viewModel.prepararCorreo(proveedorId)
+            navController.navigate("correo")
+        },
+        onBack = { navController.popBackStack() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ReposicionContent(
+    grupos: Map<Long?, List<ProductoEntity>>,
+    proveedores: List<ProveedorEntity>,
+    estadoSolicitud: (Long) -> String,
+    cantidadSugerida: (ProductoEntity) -> Int,
+    estadoStock: (ProductoEntity) -> String,
+    onCambiarEstado: (Long) -> Unit,
+    onPrepararCorreo: (Long) -> Unit,
+    onBack: () -> Unit
+) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Reposición") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
+                    IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
@@ -85,7 +114,7 @@ fun ReposicionScreen(
                         style = MaterialTheme.typography.titleMedium
                     )
                     if (proveedor != null) {
-                        Text("Estado de la solicitud: ${viewModel.estadoSolicitud(solicitudes, proveedor.id)}")
+                        Text("Estado de la solicitud: ${estadoSolicitud(proveedor.id)}")
                     }
                 }
 
@@ -93,9 +122,9 @@ fun ReposicionScreen(
                     Card(Modifier.fillMaxWidth()) {
                         Column(Modifier.padding(10.dp)) {
                             Text("${producto.nombre} (${producto.codigo})", fontWeight = FontWeight.Bold)
-                            Text("Disponible: ${producto.cantidad} - ${productoViewModel.estadoStock(producto)}")
+                            Text("Disponible: ${producto.cantidad} - ${estadoStock(producto)}")
                             Text("Existencia mínima: ${producto.existenciaMinima}")
-                            Text("Cantidad sugerida: ${viewModel.cantidadSugerida(producto)} ${producto.unidadMedida}")
+                            Text("Cantidad sugerida: ${cantidadSugerida(producto)} ${producto.unidadMedida}")
                         }
                     }
                 }
@@ -104,16 +133,13 @@ fun ReposicionScreen(
                     item {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedButton(
-                                onClick = { viewModel.cambiarEstado(proveedor.id) },
+                                onClick = { onCambiarEstado(proveedor.id) },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("Cambiar estado")
                             }
                             Button(
-                                onClick = {
-                                    viewModel.prepararCorreo(proveedor.id)
-                                    navController.navigate("correo")
-                                },
+                                onClick = { onPrepararCorreo(proveedor.id) },
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text("Preparar correo")
@@ -123,5 +149,34 @@ fun ReposicionScreen(
                 }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ReposicionContentPreview() {
+    val proveedor = ProveedorEntity(
+        id = 1, codigo = "PR-001", nombre = "Repuestos Andes",
+        contacto = "Juan Pérez", correo = "ventas@andes-ficticio.cl",
+        telefono = "+56 9 1234 5678", categorias = "Filtros, Frenos",
+        activo = true, observaciones = ""
+    )
+    val producto = ProductoEntity(
+        id = 1, codigo = "AC-001", nombre = "Aceite 5W-30",
+        descripcion = "Lubricante sintético", categoria = "Lubricantes", marca = "Genérico",
+        unidadMedida = "unidades", cantidad = 2, existenciaMinima = 5, existenciaObjetivo = 10,
+        precioCompra = 3500, precioVenta = 5990, estado = "Activo", proveedorId = 1
+    )
+    GestionMovilTheme {
+        ReposicionContent(
+            grupos = mapOf(1L to listOf(producto)),
+            proveedores = listOf(proveedor),
+            estadoSolicitud = { "Pendiente" },
+            cantidadSugerida = { 8 },
+            estadoStock = { "Bajo el mínimo" },
+            onCambiarEstado = {},
+            onPrepararCorreo = {},
+            onBack = {}
+        )
     }
 }

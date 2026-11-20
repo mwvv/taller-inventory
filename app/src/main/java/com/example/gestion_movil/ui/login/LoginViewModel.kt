@@ -11,7 +11,6 @@ class LoginViewModel(
     private val repo: AuthRepository = AuthRepository()
 ) : ViewModel() {
 
-    // Estado de la pantalla de inicio de sesión
     var uiState by mutableStateOf(LoginUiState())
         private set
 
@@ -23,7 +22,6 @@ class LoginViewModel(
         uiState = uiState.copy(password = value, error = null)
     }
 
-    // Valida las credenciales; si son correctas entrega la cuenta (usuario + rol) para iniciar la sesión
     fun submit(onSuccess: (Credential) -> Unit) {
         uiState = uiState.copy(isLoading = true, error = null)
 

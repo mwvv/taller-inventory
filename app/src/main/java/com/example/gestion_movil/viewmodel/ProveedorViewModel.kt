@@ -18,29 +18,21 @@ import java.io.IOException
 
 class ProveedorViewModel(app: Application) : AndroidViewModel(app) {
 
-    // El ViewModel trabaja con el repositorio, no con el DAO directamente
     private val repository = ProveedorRepository(GestionDatabase.getDatabase(app).proveedorDao())
 
-    // Proveedores guardados en Room
     val proveedores: Flow<List<ProveedorEntity>> = repository.proveedores
 
-    // Estado interno mutable
     private val _estado = MutableStateFlow(ProveedorUiState())
 
-    // Estado expuesto para la UI
     val estado: StateFlow<ProveedorUiState> = _estado
 
-    // ---------- API REST ----------
 
-    // true mientras se consulta la API (para mostrar el indicador de carga)
     private val _sincronizando = MutableStateFlow(false)
     val sincronizando: StateFlow<Boolean> = _sincronizando
 
-    // Mensaje con el resultado de la última sincronización (null = nada que mostrar)
     private val _mensajeApi = MutableStateFlow<String?>(null)
     val mensajeApi: StateFlow<String?> = _mensajeApi
 
-    // Consulta la API REST de proveedores y actualiza Room
     fun sincronizarDesdeApi() {
         if (_sincronizando.value) return
         viewModelScope.launch {
@@ -112,7 +104,6 @@ class ProveedorViewModel(app: Application) : AndroidViewModel(app) {
         _estado.update { it.copy(observaciones = valor) }
     }
 
-    // Validación global del formulario
     fun validarFormulario(): Boolean {
         val estadoActual = _estado.value
 
@@ -143,7 +134,6 @@ class ProveedorViewModel(app: Application) : AndroidViewModel(app) {
         return !hayErrores
     }
 
-    // Guarda en Room (inserta si es nuevo, actualiza si ya existe)
     fun guardar(onListo: () -> Unit) {
         val a = _estado.value
         viewModelScope.launch {
@@ -169,7 +159,6 @@ class ProveedorViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // Nombre del proveedor de un producto
     fun nombre(lista: List<ProveedorEntity>, id: Long?): String {
         return lista.find { it.id == id }?.nombre ?: "Sin proveedor"
     }

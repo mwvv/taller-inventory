@@ -20,18 +20,14 @@ import kotlinx.coroutines.launch
 
 class ProductoViewModel(app: Application) : AndroidViewModel(app) {
 
-    // El ViewModel trabaja con el repositorio, no con el DAO directamente
     private val repository = ProductoRepository(GestionDatabase.getDatabase(app).productoDao())
     private val proveedorRepository = ProveedorRepository(GestionDatabase.getDatabase(app).proveedorDao())
     private val ubicacionRepository = UbicacionRepository(GestionDatabase.getDatabase(app).ubicacionDao())
 
-    // Lista de productos guardados en Room
     val productos: Flow<List<ProductoEntity>> = repository.productos
 
-    // Estado interno mutable
     private val _estado = MutableStateFlow(ProductoUiState())
 
-    // Estado expuesto para la UI
     val estado: StateFlow<ProductoUiState> = _estado
 
     val estadosProducto = listOf("Activo", "Inactivo", "Descontinuado")
@@ -42,7 +38,6 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // Primera vez que se abre la app (base vacía): carga los datos de ejemplo
     private suspend fun cargarDatosIniciales() {
         val baseVacia = repository.contar() == 0 &&
                 proveedorRepository.contar() == 0 &&
@@ -57,9 +52,7 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
         DatosIniciales.movimientos(ahora).forEach { movimientoDao.insertar(it) }
     }
 
-    // ---------- Formulario ----------
 
-    // Limpia el formulario para un producto nuevo (mantiene la búsqueda)
     fun nuevo() {
         _estado.update {
             it.copy(
@@ -72,13 +65,11 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // Formulario nuevo con el código ya escrito (viene de un QR no registrado)
     fun nuevoConCodigo(codigo: String) {
         nuevo()
         _estado.update { it.copy(codigo = codigo.trim()) }
     }
 
-    // Carga un producto existente en el formulario para modificarlo
     fun cargar(producto: ProductoEntity) {
         _estado.update {
             it.copy(
@@ -159,7 +150,6 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
         _estado.update { it.copy(ubicacionId = valor) }
     }
 
-    // Validación global del formulario
     fun validarFormulario(): Boolean {
         val estadoActual = _estado.value
         val cantidad = estadoActual.cantidad.toIntOrNull()
@@ -218,20 +208,17 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
         return !hayErrores
     }
 
-    // Un precio vacío se guarda como 0
     private fun esPrecioValido(valor: String): Boolean {
         if (valor.isBlank()) return true
         val numero = valor.toIntOrNull()
         return numero != null && numero >= 0
     }
 
-    // Guarda en Room (inserta si es nuevo, actualiza si ya existe)
     fun guardar(onListo: () -> Unit) {
         val a = _estado.value
         _estado.update { it.copy(isLoading = true) }
 
         viewModelScope.launch {
-            // Evita registrar dos productos con el mismo código
             if (repository.existeCodigo(a.codigo.trim(), a.id)) {
                 _estado.update {
                     it.copy(isLoading = false, errores = it.errores.copy(codigo = "Ya existe un producto con este código"))
@@ -265,7 +252,6 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
                 )
             } else {
                 val anterior = repository.obtenerPorId(a.id) ?: return@launch
-                // La cantidad no se modifica aquí: cambia solo con movimientos (trazabilidad)
                 repository.actualizar(
                     anterior.copy(
                         codigo = a.codigo.trim(),
@@ -281,7 +267,6 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
                         estado = a.estado,
                         proveedorId = a.proveedorId,
                         ubicacionId = a.ubicacionId,
-                        // Si cambió la ubicación se registra la fecha del cambio
                         fechaCambioUbicacion = if (anterior.ubicacionId != a.ubicacionId) ahora
                         else anterior.fechaCambioUbicacion
                     )
@@ -299,7 +284,6 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // ---------- Catálogo: búsqueda y filtros ----------
 
     fun seleccionar(id: Long) {
         _estado.update { it.copy(seleccionadoId = id) }
@@ -317,7 +301,6 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
         _estado.update { it.copy(filtroProveedorId = valor) }
     }
 
-    // Busca por nombre o código y aplica los filtros de categoría y proveedor
     fun filtrar(lista: List<ProductoEntity>, estado: ProductoUiState): List<ProductoEntity> {
         val texto = estado.busqueda.trim()
         return lista.filter { p ->
@@ -327,12 +310,10 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // Categorías existentes, para los filtros
     fun categorias(lista: List<ProductoEntity>): List<String> {
         return lista.map { it.categoria }.distinct().sorted()
     }
 
-    // Estado de existencia que se muestra con texto (no solo con color)
     fun estadoStock(producto: ProductoEntity): String {
         return when {
             producto.cantidad == 0 -> "Agotado"
@@ -341,7 +322,6 @@ class ProductoViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    // Cantidad de productos activos agotados o bajo el mínimo (aviso del menú)
     fun contarBajoMinimo(lista: List<ProductoEntity>): Int {
         return lista.count { it.estado == "Activo" && it.cantidad <= it.existenciaMinima }
     }

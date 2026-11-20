@@ -28,6 +28,10 @@ interface ProveedorDao {
     @Query("SELECT * FROM proveedores WHERE id = :id")
     suspend fun obtenerPorId(id: Long): ProveedorEntity?
 
+    // Busca por código (para sincronizar con la API sin duplicar proveedores)
+    @Query("SELECT * FROM proveedores WHERE codigo = :codigo LIMIT 1")
+    suspend fun obtenerPorCodigo(codigo: String): ProveedorEntity?
+
     // Cantidad de registros (para saber si la base está vacía)
     @Query("SELECT COUNT(*) FROM proveedores")
     suspend fun contar(): Int

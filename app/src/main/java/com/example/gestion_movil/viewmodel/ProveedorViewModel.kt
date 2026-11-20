@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 
 class ProveedorViewModel(app: Application) : AndroidViewModel(app) {
@@ -28,6 +29,38 @@ class ProveedorViewModel(app: Application) : AndroidViewModel(app) {
 
     // Estado expuesto para la UI
     val estado: StateFlow<ProveedorUiState> = _estado
+
+    // ---------- API REST ----------
+
+    // true mientras se consulta la API (para mostrar el indicador de carga)
+    private val _sincronizando = MutableStateFlow(false)
+    val sincronizando: StateFlow<Boolean> = _sincronizando
+
+    // Mensaje con el resultado de la última sincronización (null = nada que mostrar)
+    private val _mensajeApi = MutableStateFlow<String?>(null)
+    val mensajeApi: StateFlow<String?> = _mensajeApi
+
+    // Consulta la API REST de proveedores y actualiza Room
+    fun sincronizarDesdeApi() {
+        if (_sincronizando.value) return
+        viewModelScope.launch {
+            _sincronizando.value = true
+            _mensajeApi.value = try {
+                val r = repository.sincronizarDesdeApi()
+                "API: ${r.nuevos} nuevos, ${r.actualizados} actualizados"
+            } catch (e: IOException) {
+                "Sin conexión: se mantienen los proveedores locales"
+            } catch (e: Exception) {
+                "No se pudo consultar la API (${e.message})"
+            } finally {
+                _sincronizando.value = false
+            }
+        }
+    }
+
+    fun mensajeApiMostrado() {
+        _mensajeApi.value = null
+    }
 
     fun nuevo() {
         _estado.value = ProveedorUiState()

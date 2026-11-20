@@ -12,7 +12,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -48,6 +54,18 @@ fun ProveedorListScreen(
     val proveedores by viewModel.proveedores.collectAsState(initial = emptyList())
     val productos by productoViewModel.productos.collectAsState(initial = emptyList())
 
+    val sincronizando by viewModel.sincronizando.collectAsState()
+    val mensajeApi by viewModel.mensajeApi.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Muestra el resultado de la API REST una sola vez
+    LaunchedEffect(mensajeApi) {
+        mensajeApi?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.mensajeApiMostrado()
+        }
+    }
+
     // Proveedor que se quiere eliminar (para la confirmación)
     var aEliminar by remember { mutableStateOf<ProveedorEntity?>(null) }
 
@@ -59,9 +77,20 @@ fun ProveedorListScreen(
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
+                },
+                actions = {
+                    // Consulta la API REST de proveedores (Retrofit)
+                    if (sincronizando) {
+                        CircularProgressIndicator(Modifier.padding(12.dp).size(24.dp), strokeWidth = 2.dp)
+                    } else {
+                        IconButton(onClick = { viewModel.sincronizarDesdeApi() }) {
+                            Icon(Icons.Default.CloudDownload, contentDescription = "Sincronizar con API REST")
+                        }
+                    }
                 }
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 viewModel.nuevo()
